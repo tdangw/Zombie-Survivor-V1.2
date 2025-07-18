@@ -818,9 +818,9 @@ button.active {
 <div id="infoOverlay" class="infoOverlay" style="display: none;">
   <h3 style="margin-top: 0; color: #66aaff;">ℹ️ Thông tin</h3>
   <div class="infoContent">
-    <p>Phiên bản: 1.1<br>
+    <p>Phiên bản: 1.2<br>
        Tác giả: Dang<br>
-       Cập nhật: 2025-07-10</p>
+       Cập nhật: 2025-07-18</p>
     <p style="margin: 0; text-align: left;"><strong style="color: #00cc66;">🆕 New</strong></p>
     <!-- Phần có thể cuộn và canh trái -->
     <div style="max-height: 128px;overflow-y: auto;scrollbar-width: none;
@@ -831,6 +831,7 @@ button.active {
         <li>Tăng giới hạn số lượng Zombie</li>
         <li>Thêm Boss to hơn</li>
         <li>Cải tiến một số kỹ năng</li>
+        <li>Thêm hệ thống ngày đêm</li>
         <!-- Các mục mới có thể thêm ở đây -->
       </ul>
     </div>
@@ -1763,7 +1764,7 @@ function spawnBigBoss() {
     z.speed = z.baseSpeed;
     z.isBoss = true;
     z.isBigBoss = true; // 🔑 Đánh dấu riêng bigBoss
-    z.hp = 10000 + wave * 5 + Math.floor(Math.random() * 200 + 50);
+    z.hp = 10000 + wave * 500 + Math.floor(Math.random() * 1000 + 250);
     z.baseHp = z.hp;
     z.type = "bigBoss";
     z.level = 999;
