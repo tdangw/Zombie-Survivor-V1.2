@@ -56,7 +56,7 @@
   left: 50%;
   transform: translateX(-50%);
   display: flex;
-  gap: 0.2rem; /* khoảng cách giữa các nút */
+  gap: 0.5rem; /* khoảng cách giữa các nút */
   padding: 0.7rem 1.5rem; 
   background: rgb(0, 0, 0); /* nền trong suốt */
   border-radius: 0rem;
@@ -71,7 +71,7 @@
 #ui button {
   padding: 0.6rem 0.6rem;
   font-size: 0.75rem;
-  min-width: 6.5rem;
+  min-width: 4.5rem;
 }
 
 /* 🔘 Nút mặc định cho toàn giao diện */
@@ -80,7 +80,7 @@ button {
   padding: 0.65rem 1.25rem;
   font-size: 1rem;
   cursor: pointer;
-  min-width: 6.5rem;
+  min-width: 5rem;
   text-align: center;
   background-color: #1a2b33;
   border: 0.125rem solid #294e5a;
@@ -127,41 +127,6 @@ button.active {
   color: white;
   font-size: 1rem;
   padding: 0.3rem 0.6rem;
-}
-
-/* ℹ️ Tooltip container bao ngoài để hiển thị gợi ý */
-.tooltip-container {
-  position: relative;
-  display: inline-block;
-  margin: 0.4rem;
-}
-
-/* 📝 Tooltip nội dung khi hover */
-.tooltip-container .tooltip-text {
-  visibility: hidden;
-  background-color: #222;
-  color: #fff;
-  text-align: left;
-  border-radius: 0.375rem;
-  padding: 0.5rem 0.6rem;
-  position: absolute;
-  z-index: 10;
-  top: 110%;
-  left: 50%;
-  transform: translateX(-50%);
-  opacity: 0;
-  width: 13.75rem;
-  font-size: 0.8125rem;
-  line-height: 1.5;
-  white-space: pre-line;
-  transition: opacity 0.3s ease;
-  box-shadow: 0 0.125rem 0.5rem rgba(0, 0, 0, 0.5);
-}
-
-/* 🖱 Hiển thị tooltip khi hover vào container */
-.tooltip-container:hover .tooltip-text {
-  visibility: visible;
-  opacity: 1;
 }
 
 /* 🔄 Nút restart đặc biệt */
@@ -710,86 +675,120 @@ button.active {
     z-index: 10;
     text-shadow: 0 0 5px violet;
 }
+#ui button[data-tooltip] {
+  position: relative;
+}
+
+#ui button[data-tooltip]::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  left: 110%;
+  top: 4rem;
+  transform: translateX(-40%);
+  margin-left: .6rem;
+  min-width: 18rem;
+  white-space: pre-line;
+  padding: .55rem .7rem;
+  font-size: .8rem;
+  background: rgba(0, 0, 0, 0.85);
+  color: #e0f7fa;
+  border: 1px solid #00ffff;
+  border-radius: .5rem;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity .25s;
+  text-align: left; /* 👈 Đây là thứ bạn đang thiếu */
+  z-index: 10000;
+}
+
+#ui button:hover::after {
+  opacity: 1;
+}
 
 /* kết thúc style */
 </style>
 </head>
 <body>
 <div id="ui">
-<div class="tooltip-container">
-  <button id="autoBtn">⚙️ Auto</button>
-  <span class="tooltip-text">⚙️ Auto:
-    - Tự động tấn công zombie gần nhất
-    - Tiêu hao: 0 ⚡
-  </span>
-</div>
+  <button id="autoBtn" data-tooltip="⚙️ Auto:
+- Tự động tấn công zombie gần nhất
+- Tiêu hao: 0 ⚡">⚙️ Auto</button>
 
-<div class="tooltip-container">
-  <button id="bladeBtn">🔪 Đao</button>
-  <span class="tooltip-text">🔪 Kỹ năng Đao:
-    - Tạo 2 thanh đao xoay quanh
-    - Tối đa tạo được 20 đao
-    - Bay vào zombie gần nhất
-    - Yêu cầu level 1
-    - Sát thương: 1
-    - Hiệu lực: 30s ⏱
-    - Tiêu hao: 3 ⚡
-  </span>
-</div>
+  <button id="bladeBtn" data-tooltip="🔪 Kỹ năng Đao:
+- Tạo 2 thanh đao xoay quanh
+- Tối đa tạo được 20 đao
+- Bay vào zombie gần nhất
+- Yêu cầu level 1
+- Sát thương: 1
+- Hiệu lực: 30s ⏱
+- Tiêu hao: 3 ⚡">🔪 Đao</button>
 
-<div class="tooltip-container">
-  <button id="swordBtn">⚔️ Kiếm</button>
-  <span class="tooltip-text">⚔️ Kỹ năng Kiếm:
-    - Tạo mưa kiếm rơi từng đợt
-    - Số lượng kiếm tăng theo level
-    - Bay vào zombie gần nhất
-    - Yêu cầu level 2
-    - Sát thương: 1
-    - Hiệu lực: 30s ⏱
-    - Tiêu hao: 6 ⚡
-  </span>
-</div>
+  <button id="swordBtn" data-tooltip="⚔️ Kỹ năng Kiếm:
+- Tạo mưa kiếm rơi từng đợt
+- Số lượng kiếm tăng theo level
+- Bay vào zombie gần nhất
+- Yêu cầu level 2
+- Sát thương: 1
+- Hiệu lực: 30s ⏱
+- Tiêu hao: 6 ⚡">⚔️ Kiếm</button>
 
-<div class="tooltip-container">
-  <button id="fireBtn">🔥 Lửa</button>
-  <span class="tooltip-text">🔥 Kỹ năng Lửa:
-    - Tạo 2 quả cầu lửa quay quanh
-    - Tạo được tối đa 10 quả cầu lửa
-    - Tiêu diệt zombie chạm vào
-    - Yêu cầu level 3
-    - Sát thương: 1
-    - Hiệu lực: 45s ⏱
-    - Tiêu hao: 8 ⚡
-  </span>
-</div>
+  <button id="fireBtn" data-tooltip="🔥 Kỹ năng Lửa:
+- Tạo 2 quả cầu lửa quay quanh
+- Tạo được tối đa 10 quả cầu lửa
+- Tiêu diệt zombie chạm vào
+- Yêu cầu level 3
+- Sát thương: 1
+- Hiệu lực: 45s ⏱
+- Tiêu hao: 8 ⚡">🔥 Lửa</button>
 
-<div class="tooltip-container">
-  <button id="iceBtn">❄️ Băng</button>
-  <span class="tooltip-text">❄️ Kỹ năng Băng (mở khóa Lv10):
-    - Tạo 2 quả cầu băng lớn xoay quanh
-    - Tạo được tối đa 10 quả cầu lửa
-    - Gây sát thương diện rộng
-    - Yêu cầu level 3
-    - Sát thương: 1
-    - Hiệu lực: 60s ⏱
-    - Tiêu hao: 12 ⚡
-  </span>
-</div>
-<div class="tooltip-container">
-  <button id="PetBtn">🐰 Pet</button>
-  <span class="tooltip-text">🐰 Kỹ năng Pet:
-    - Kỹ năng thử nghiệm
-    - (Chưa hoạt động)
-    - Tiêu hao: 5 💠
-    - Hiệu lực: 20s ⏱
-    - Hỗ trợ: nhặt vật phẩm
-  </span>
-</div>
+  <button id="iceBtn" data-tooltip="❄️ Kỹ năng Băng (mở khóa Lv10):
+- Tạo 2 quả cầu băng lớn xoay quanh
+- Tạo được tối đa 10 quả cầu băng
+- Gây sát thương diện rộng
+- Yêu cầu level 3
+- Sát thương: 1
+- Hiệu lực: 60s ⏱
+- Tiêu hao: 12 ⚡">❄️ Băng</button>
 
-<div id="score">
-<div id="score-top">Kill: 0 | ❤️: 3</div>
-<div id="score-bottom">Level: 1 | ⚡: 0</div>
-</div>  </div>
+  <button id="thunderBtn" data-tooltip="🧪 Kỹ năng thunder (test):
+- Tạo 2 quả cầu lôi xoay quanh
+- Tạo được tối đa 6 quả cầu
+- Gây sát thương diện rộng
+- Yêu cầu level 5
+- Sát thương: 1
+- Hiệu lực: 60s ⏱
+- Tiêu hao: 18 ⚡">🧪 Lôi</button>
+
+  <button id="thunderBtn" data-tooltip="🧪 Kỹ năng thunder (test):
+- Tạo 2 quả cầu lôi xoay quanh
+- Tạo được tối đa 6 quả cầu
+- Gây sát thương diện rộng
+- Yêu cầu level 5
+- Sát thương: 1
+- Hiệu lực: 60s ⏱
+- Tiêu hao: 18 ⚡">🧪 test1</button>
+
+  <button id="thunderBtn" data-tooltip="🧪 Kỹ năng thunder (test):
+- Tạo 2 quả cầu lôi xoay quanh
+- Tạo được tối đa 6 quả cầu
+- Gây sát thương diện rộng
+- Yêu cầu level 5
+- Sát thương: 1
+- Hiệu lực: 60s ⏱
+- Tiêu hao: 18 ⚡">🧪 test2</button>
+
+  <button id="PetBtn" data-tooltip="🐰 Kỹ năng Pet:
+- Kỹ năng thử nghiệm
+- (Chưa hoạt động)
+- Tiêu hao: 5 ⚡
+- Hiệu lực: 20s ⏱
+- Hỗ trợ: nhặt vật phẩm">🐰 Pet</button>
+
+  <div id="score">
+    <div id="score-top">Kill: 0 | ❤️: 3</div>
+    <div id="score-bottom">Level: 1 | ⚡: 0</div>
+  </div>
+</div>
 <canvas id="game" width="960" height="720"></canvas>
 
 <!-- 📋 Menu bắt đầu game -->
@@ -908,8 +907,8 @@ let skillStats = {};             // 📊 Thống kê kỹ năng
 // 🧍 Trạng thái người chơi
 const player = {
   x: 480, y: 360, size: 20, speed: 1,
-  hearts: 10, energy: 1, mana: 1,
-  level: 1, score: 0,
+  hearts: 10, energy: 111111, mana: 1111111,
+  level: 111, score: 0,
   hitTimer: 0,
   name: "Player"
 };
@@ -5231,7 +5230,7 @@ const skillsData = [
   {
     name: "Boom hạt nhân",
     icon: "☢️",
-    manaCost: 50,
+    manaCost: 100,
     duration: 20000,
     baseDamage: 100,
     description: "Bom hạt nhân phát nổ toàn bản đồ, sát thương cực lớn."
