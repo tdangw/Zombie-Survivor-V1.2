@@ -908,7 +908,7 @@ let skillStats = {};             // 📊 Thống kê kỹ năng
 // 🧍 Trạng thái người chơi
 const player = {
   x: 480, y: 360, size: 20, speed: 1,
-  hearts: 10, energy: 1111, mana: 1111,
+  hearts: 10, energy: 1, mana: 1,
   level: 1, score: 0,
   hitTimer: 0,
   name: "Player"
@@ -2447,7 +2447,7 @@ items.forEach(it => {
 });
 
 items = items.filter(it => it.active);
-const requiredScore = player.level * 3; // Tăng level #Tăng cấp
+const requiredScore = player.level * 300; // Tăng level #Tăng cấp
 if (player.score >= requiredScore) {
   player.level++;
   player.hearts += 1 + (UPGRADE_TIERS.hpBoost[playerUpgrades.hpBoost] || 0);
@@ -4701,7 +4701,7 @@ loop();
 //🧼 11. Các đoạn khởi tạo UI sau canvas
 // Hàm bắt đầu game
 function startGame() {
-  spawnBigBoss(); // chỉ để test
+//  spawnBigBoss(); // chỉ để test
 
   randomizeBackground();
   // Hiển thị tổng điểm
