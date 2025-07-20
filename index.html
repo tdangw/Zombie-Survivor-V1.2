@@ -1772,6 +1772,9 @@ function spawnBigBoss() {
     z.level = 999;
     z.color = "purple"; // Đổi màu để dễ phân biệt
     z.active = true;
+z.lazerTimer = 0;
+z.isLazerAttacking = false;
+z.lazerDuration = 0;
     zombies.push(z);
     zombieSpawnedCount++;
 }
@@ -2242,12 +2245,12 @@ zombies.forEach(z => {
   // 🔄 Ban đêm buff +5 ~ +10 HP, ban ngày reset HP về gốc
 if (isNight()) {
     if (!z.hpNightBuffed) {
-        z.hp += Math.floor(Math.random() * 46) + 5; // +5 ~ +10 HP
+        z.hp += Math.floor(Math.random() * 46) + 5; // +5 ~ +50 HP
         z.hpNightBuffed = true;
     }
 } else {
     if (z.hpNightBuffed) {
-        z.hp = z.baseHp;
+        z.hp = z.baseHp + 1;
         z.hpNightBuffed = false;
     }
 }
@@ -2894,14 +2897,73 @@ for (let i = 0; i < 2; i++) {
 });
 }
 updateParticles();
-
 updatePet();   // 🐰 xử lý pet mỗi frame
-
 zombies = zombies.filter(z => z.active);
-
+zombies.forEach(z => updateBigBossLazer(z, globalDeltaTime));
   updateUI();
   updateStatsOverlay();
   updateEnemyBullets();
+}
+// Lazer boss
+function updateBigBossLazer(z, deltaTime) {
+  console.log('deltaTime:', deltaTime);
+    if (!z.active || !z.isBigBoss) return;
+
+    // Tạo biến cooldown nếu chưa có
+    if (z.lazerDamageCooldown === undefined) z.lazerDamageCooldown = 0;
+
+    z.lazerTimer += deltaTime;
+    if (!z.isLazerAttacking && z.lazerTimer > 5) {
+        z.isLazerAttacking = true;
+        z.lazerDuration = 2;
+        z.lazerTimer = 0;
+        // Lưu lại góc bắn laze tại thời điểm bắt đầu
+        const dx = player.x - z.x;
+        const dy = player.y - z.y;
+        z.lazerAngle = Math.atan2(dy, dx);
+    }
+
+    if (z.isLazerAttacking) {
+        z.lazerDuration -= deltaTime;
+        if (z.lazerDuration <= 0) {
+            z.isLazerAttacking = false;
+        }
+        // Kiểm tra player đứng trúng tia laze (dùng phép chiếu vuông góc)
+        if (z.lazerAngle !== undefined) {
+            // Tính vector từ boss đến player
+            const px = player.x - z.x;
+            const py = player.y - z.y;
+            // Vector đơn vị hướng tia laze
+            const dx = Math.cos(z.lazerAngle);
+            const dy = Math.sin(z.lazerAngle);
+            // Chiếu vuông góc
+            const proj = px * dx + py * dy;
+            const perp = Math.abs(px * dy - py * dx);
+            // Tham số cấu hình
+            const lazerRange = 600;
+            const lazerWidth = 18;
+            const lazerDamage = 2; // Sát thương mỗi lần trúng
+            const lazerCooldown = 60; // frame, khoảng 0.5s nếu 60fps
+
+            // Nếu player nằm trong đoạn tia laze và gần đường thẳng
+            if (proj > 0 && proj < lazerRange && perp < lazerWidth) {
+                if (z.lazerDamageCooldown <= 0 && player.hearts > 0) {
+                    player.hearts -= lazerDamage;
+                    z.lazerDamageCooldown = lazerCooldown;
+                    // Hiệu ứng nổ nhỏ tại player
+                    explosions.push(getExplosion(player.x, player.y));
+                    // Kiểm tra game over
+                    if (player.hearts <= 0) {
+                        player.hearts = 0;
+                        gameOver = true;
+                        document.getElementById("gameOverPanel").style.display = "flex";
+                    }
+                }
+            }
+        }
+        // Giảm cooldown mỗi frame
+        if (z.lazerDamageCooldown > 0) z.lazerDamageCooldown--;
+    }
 }
 // === 🌍 MINI MAP ===
 // Toàn bản đồ rộng 3000 x 2000 (có thể điều chỉnh)
@@ -3610,7 +3672,6 @@ backgroundBalloons.forEach(balloon => {
 //🎨 9. Vẽ khung hình (draw canvas)
 function draw() {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
-  updateDayNight();
   drawBackground();
   drawBackgroundByTime(ctx);
   ctx.save();
@@ -3748,11 +3809,26 @@ function drawBigBoss(ctx, x, y, radius, hp) {
     // Ánh sáng nền
     ctx.beginPath();
     ctx.arc(0, 0, radius + 20, 0, Math.PI * 2);
-    ctx.fillStyle = "#150d25";
+    ctx.fillStyle = "#123";
     ctx.shadowColor = "#a445f5";
     ctx.shadowBlur = 50;
     ctx.fill();
     ctx.shadowBlur = 0;
+    // Hiệu ứng vòng xoáy bên trong boss
+    ctx.save();
+    ctx.globalAlpha = 0.08;
+    ctx.strokeStyle = "#a445f5";
+    ctx.lineWidth = 1;
+
+    const numCircles = 6;
+    for (let i = 0; i < numCircles; i++) {
+        ctx.beginPath();
+        ctx.arc(0, 0, (radius / 6) * (i + 1), 0, Math.PI * 2);
+        ctx.stroke();
+    }
+
+    ctx.globalAlpha = 1;
+    ctx.restore();
 
     // Tay trái
     ctx.beginPath();
@@ -3945,12 +4021,53 @@ function drawBigBoss(ctx, x, y, radius, hp) {
 
     ctx.restore();
 }
+function drawBigBossLazer(ctx, z) {
+    if (!z.isBigBoss || !z.isLazerAttacking || z.lazerAngle === undefined) return;
+
+    ctx.save();
+    ctx.translate(z.x, z.y);
+
+    // Vẽ vòng tròn phát sáng ở tâm bắn
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(0, 0, 28, 0, Math.PI * 2);
+    ctx.fillStyle = "rgba(200,100,255,0.18)";
+    ctx.shadowColor = "violet";
+    ctx.shadowBlur = 32;
+    ctx.fill();
+    ctx.shadowBlur = 0;
+    ctx.restore();
+
+    // Vẽ vòng tròn nhỏ hơn, đậm hơn ở tâm
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(0, 0, 12, 0, Math.PI * 2);
+    ctx.fillStyle = "rgba(200,100,255,0.45)";
+    ctx.shadowColor = "violet";
+    ctx.shadowBlur = 12;
+    ctx.fill();
+    ctx.shadowBlur = 0;
+    ctx.restore();
+
+    // Vẽ tia lazer
+    ctx.rotate(z.lazerAngle);
+    ctx.strokeStyle = "rgba(200, 100, 255, 0.7)";
+    ctx.lineWidth = 8;
+    ctx.shadowColor = "violet";
+    ctx.shadowBlur = 24;
+    ctx.beginPath();
+    ctx.moveTo(0, 0);
+    ctx.lineTo(600, 0); // Tia dài 600px
+    ctx.stroke();
+    ctx.restore();
+}
 // Vẽ toàn bộ zombie hoạt động kèm icon, HP, trạng thái, biểu cảm (tối ưu fillText)
 zombies.forEach(z => {
   if (!z.active) return;
   // 🆕 Vẽ BigBoss giống Boss nhưng riêng block để dễ quản lý
 if (z.isBigBoss) {
     drawBigBoss(ctx, z.x, z.y, z.radius, z.hp);
+    drawBigBossLazer(ctx, z);
     return;
 }
   ctx.save();
@@ -4666,6 +4783,7 @@ blackHoles.forEach(h => {
 let fps = 0, lastFrameTime = performance.now(), frameCount = 0, lastFpsUpdate = performance.now(); // biến cập nhật FPS
 
 function loop() {
+  updateDayNight(); // <-- chỉ gọi 1 lần ở đây tránh lặp lại
   const now = performance.now();
   frameCount++;
 
@@ -4694,8 +4812,6 @@ if (zombies.length < 300) {
 }
 }
 }
-updateDayNight();
-
 requestAnimationFrame(loop);
 }
 
@@ -4706,7 +4822,7 @@ loop();
 //🧼 11. Các đoạn khởi tạo UI sau canvas
 // Hàm bắt đầu game
 function startGame() {
-  spawnBigBoss(); // chỉ để test
+//  spawnBigBoss(); // chỉ để test
 
   randomizeBackground();
   // Hiển thị tổng điểm
