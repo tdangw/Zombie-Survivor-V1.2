@@ -72,6 +72,8 @@
   padding: 0.6rem 0.6rem;
   font-size: 0.75rem;
   min-width: 4.5rem;
+  margin-bottom: 0.6rem;
+  margin-top: 0.6rem;
 }
 
 /* 🔘 Nút mặc định cho toàn giao diện */
@@ -581,7 +583,7 @@ button.active {
 }
 /* 🔧 Spacer cân bằng layout trong overlay hướng dẫn */
 .spacerguide {
-  height: 3rem; /* khoảng cách giữa các mục */
+  height: 2rem; /* khoảng cách giữa các mục */
 }
 
 .infoOverlay button {
@@ -682,9 +684,9 @@ button.active {
 #ui button[data-tooltip]::after {
   content: attr(data-tooltip);
   position: absolute;
-  left: 110%;
+  left: 112%;
   top: 4rem;
-  transform: translateX(-40%);
+  transform: translateX(-38%);
   margin-left: .6rem;
   min-width: 18rem;
   white-space: pre-line;
@@ -785,7 +787,7 @@ button.active {
 - Hỗ trợ: nhặt vật phẩm">🐰 Pet</button>
 
   <div id="score">
-    <div id="score-top">Kill: 0 | ❤️: 3</div>
+    <div id="score-top">Kill: 0 | ❤️: 10</div>
     <div id="score-bottom">Level: 1 | ⚡: 0</div>
   </div>
 </div>
@@ -809,6 +811,7 @@ button.active {
     <li>Mana rơi từ boss để dùng kỹ năng đặc biệt</li>
     <li>Bấm X: mở danh sách kỹ năng</li>
     <li>Bấm Z: mở bảng thống kê</li>
+    <li>Bấm M: mở bảng bản đồ</li>
     <li>Vật phẩm mới: Energy, Mana, HP, Box</li>
   </ul>
   <div class="spacerguide"></div> <!-- 👈 dòng đệm -->
@@ -2390,6 +2393,9 @@ fireballs = fireballs.filter(f => {
     if (!z.active) return;
     if (distance(f, z) < 25) {
   dealDamageToZombie(z, skillUpgrades.fireDamage + playerUpgrades.damageBoost);
+      z.state = "wandering"; // chuyển sang trạng thái wandering
+      z.wanderTime = Date.now() + 3000 + Math.random() * 2000; // 3–5 giây lang thang
+      z.wanderAngle = Math.random() * Math.PI * 2; // góc ngẫu nhiên
 }
 }
 );
@@ -4700,7 +4706,7 @@ loop();
 //🧼 11. Các đoạn khởi tạo UI sau canvas
 // Hàm bắt đầu game
 function startGame() {
-//  spawnBigBoss(); // chỉ để test
+  spawnBigBoss(); // chỉ để test
 
   randomizeBackground();
   // Hiển thị tổng điểm
