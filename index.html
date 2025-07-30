@@ -1,4 +1,4 @@
-<!--🎮 Zombie Survivor  ✨ Version: 1.1  🖋️ Tác giả: Dang -->
+<!--🎮 Zombie Survivor  ✨ Version: 1.2  🖋️ Tác giả: Dang -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -757,7 +757,7 @@ button.active {
 - Hiệu lực: 45s ⏱
 - Tiêu hao: 8 ⚡">🔥 Lửa</button>
 
-  <button id="iceBtn" data-tooltip="❄️ Kỹ năng Băng (mở khóa Lv10):
+  <button id="iceBtn" data-tooltip="❄️ Kỹ năng Băng:
 - Tạo 2 quả cầu băng lớn xoay quanh
 - Tạo được tối đa 10 quả cầu băng
 - Gây sát thương diện rộng
@@ -775,23 +775,22 @@ button.active {
 - Hiệu lực: 60s ⏱
 - Tiêu hao: 18 ⚡">🔵 Lôi</button>
 
-  <button id="1btn" data-tooltip="🧪 Kỹ năng thunder (test):
-- Tạo 2 quả cầu lôi xoay quanh
-- Tạo được tối đa 6 quả cầu
-- Gây sát thương diện rộng
-- Yêu cầu level 5
-- Sát thương: 1
-- Hiệu lực: 60s ⏱
-- Tiêu hao: 18 ⚡">🧪 test1</button>
+<button id="supportAuraBtn" data-tooltip="✨ Kỹ năng hào quang:
+- Tạo một vùng sức mạnh dưới chân.
+- Tăng 20% tốc độ chạy và tốc độ bắn.
+- Hồi 1 HP mỗi giây.
+- Yêu cầu level 6
+- Hiệu lực: 30s ⏱
+- Tiêu hao: 15 ⚡">✨ Heal</button>
 
-  <button id="2btn" data-tooltip="🧪 Kỹ năng thunder (test):
-- Tạo 2 quả cầu lôi xoay quanh
-- Tạo được tối đa 6 quả cầu
-- Gây sát thương diện rộng
-- Yêu cầu level 5
-- Sát thương: 1
-- Hiệu lực: 60s ⏱
-- Tiêu hao: 18 ⚡">🧪 test2</button>
+<button id="fairyBtn" data-tooltip="🦋 Kỹ năng Fairy:
+- Triệu hồi Fairy bay quanh người chơi.
+- Hồi máu và tăng sát thương.
+- Hiệu ứng thay đổi theo ngày/đêm.
+- Giúp hồi sinh, giảm ý chí của zombie.
+- Yêu cầu level 7
+- Hiệu lực: 45s ⏱
+- Tiêu hao: 50 ⚡">🦋 Fairy</button>
 
   <button id="PetBtn" data-tooltip="🐰 Kỹ năng Pet:
 - Kỹ năng thử nghiệm
@@ -889,7 +888,7 @@ let backgroundMushrooms = [];
 let backgroundRocks = [];
 let backgroundBalloons = [];
 let backgroundSeeds = [];
-let dayTime = 0.25; // 0.25 = 6h
+let dayTime = 0.7; // 0.25 = 6h
 let dayDirection = 1; // giữ lại cờ này như cũ
 const dayDuration = 96; // 1 vòng ngày đêm = 96 giây thực tế
 let lastUpdateTime = Date.now();
@@ -897,6 +896,13 @@ let prevIsNight = isNight();
 let backgroundBigStars = [];
 let globalDeltaTime = 0;
 let currentDay = 1; // ✨ biến đếm số ngày trôi qua
+// 🦋 Trạng thái kỹ năng Fairy
+let fairyActive = false;
+let fairyEndTime = 0;
+let fairies = []; // Mảng chứa các Fairy
+let lastFairyHealTime = 0;
+let fairyDamageBonus = 0; // Lưu lại mức sát thương cộng thêm
+let fairyDeathDefyAvailable = false; // Cờ cho cơ chế hồi sinh
 
 // ✨ DANH SÁCH CÁC LOẠI ZOMBIE ✨
 const zombieTypes = [
@@ -939,7 +945,11 @@ const player = {
   level: 11, score: 0,
   hitTimer: 0,
   name: "Player",
-  isDying: false
+  isDying: false,
+  // ✨ THÊM CÁC DÒNG SAU VÀO ĐÂY ✨
+  isTeleporting: false,      // Cờ báo hiệu đang trong quá trình dịch chuyển
+  isGrowingAfterTeleport: false, // Cờ báo hiệu đang lớn dần ra sau khi dịch chuyển
+  originalSize: 20,          // Dùng để lưu lại kích thước gốc
 };
 
 // 🌟 Trạng thái nâng cấp
@@ -969,8 +979,11 @@ const skillUpgrades = {
   iceDamage: 1,             // sát thương mỗi quả
   // Lôi
   thunderCount: 2,         // bắt đầu 2 quả cầu lôi, tối đa 6
-  thunderDamage: 1         // sát thương mỗi quả cầu lôi
-
+  thunderDamage: 1,        // sát thương mỗi quả cầu lôi
+  // 🦋 Nâng cấp kỹ năng Fairy
+  fairyCount: 1,      // Số lượng Fairy, tối đa 3
+  fairyHealLevel: 0,  // Cấp độ hồi máu
+  fairyDamageLevel: 0 // Cấp độ tăng sát thương
 };
 let petActive = false;
 let petEndTime = 0;
@@ -980,7 +993,11 @@ let petLastHealTime = 0;
 let lastGiveUpId   = null;   // id món đồ vừa bị bỏ
 let lastGiveUpTime = 0;      // mốc thời gian bỏ
 const RESELECT_CD  = 2000;   // 2 000 ms → cấm chọn lại 2 s
-
+let auraCrackLines = []; // Mảng chứa các đường nứt phát sáng dưới đất
+let auraLightBeams = []; // Mảng chứa các cột sáng bay lên
+let supportAuraActive = false;
+let supportAuraEndTime = 0;
+let lastAuraHealTime = 0;
 // ⚙️ Trạng thái điều khiển & kỹ năng
 let lastManualShootTime = 0;
 const manualShootCooldown = 1000; // delay 1 giây
@@ -1019,6 +1036,7 @@ let disguiseEndTime = 0;
 let clones = []; // 🎭 Global – lưu các bản sao hiện tại
 let clonesActive = false;
 let clonesEndTime = 0;
+let activeCloneLasers = []; // Mảng chứa các tia lazer của clone
 
 let blackHoles = []; // Danh sách hố đen
 let extraShockwaves = []; // 🌊 các vòng nổ phụ lan ra
@@ -1030,6 +1048,20 @@ let bloodOrbCount = 1; // về sau nâng cấp +1 quả cầu
 let bloodOrbLastDrain = 0;
 let particles = [];
 let healEffects = []; // Tạo "Kho" Chứa Hiệu ứng
+
+// 🚪 Trạng thái Cổng Không Gian
+let spaceGate = null; // Biến chứa đối tượng cổng
+let spaceGateActive = false;
+let spaceGateEndTime = 0;
+let lastTeleportTime = 0; // Lưu thời điểm dịch chuyển cuối
+const GATE_COOLDOWN = 2000; // 1000ms = 1 giây chờ
+// Quản lý trạng thái animation khi dịch chuyển
+let playerTeleportState = {
+    phase: null, // các giai đoạn: 'shrinking', 'growing'
+    progress: 0, // tiến trình của hiệu ứng (từ 1.0 xuống 0.0 và ngược lại)
+    originalPlayerSize: 0,
+    originalGateRadius: 0,
+};
 
 // 🌊 Quản lý wave
 let wave = 1;
@@ -1196,6 +1228,23 @@ canvas.addEventListener("touchend", () => {
 //💥 3. Hàm hỗ trợ tiện ích
 function distance(a, b) {
 return Math.hypot(a.x - b.x, a.y - b.y);}
+
+function distanceSq(a, b) {
+    return (a.x - b.x)**2 + (a.y - b.y)**2;
+}
+function createFairyHitParticle(targetZombie) {
+    particles.push({
+        type: 'fairy_status_effect', // Loại hạt mới
+        target: targetZombie,       // "Dính" vào mục tiêu này
+        life: 120,                   // Tồn tại trong 1.5 giây (60fps * 1.5)
+        maxLife: 120,
+        angle: Math.random() * Math.PI * 2, // Góc xoay ban đầu
+        orbitRadius: targetZombie.radius + 5 + Math.random() * 5, // Khoảng cách xoay
+        size: 0.5 + Math.random() * 0.5,                 // Kích thước hạt
+        color: 'rgba(100, 255, 150, 0.8)'   // Màu xanh lá cây bạc hà
+
+    });
+}
 /**
  * Tạo một vụ nổ bằng các hạt (particle) tại một vị trí.
  * @param {number} x Tọa độ X của vụ nổ.
@@ -1203,37 +1252,50 @@ return Math.hypot(a.x - b.x, a.y - b.y);}
  * @param {number} count Số lượng hạt.
  * @param {string} baseColor Màu cơ bản của vụ nổ (ví dụ: 'orange', 'cyan').
  */
-function createParticleExplosion(x, y, count, baseColor = 'orange') {
-    // Mảng chứa các màu bạn muốn có trong vụ nổ
-    const explosionColors = [
-        'rgba(255, 255, 255, 0.9)', // Trắng
-        'rgba(255, 220, 0, 0.8)',   // Vàng
-        'rgba(255, 150, 0, 0.8)',   // Cam
-        'rgba(255, 50, 0, 0.7)'     // Đỏ
-    ];
+function createParticleExplosion(x, y, count, colorScheme = 'fire') {
+    let colors;
+    let maxDist = 60; // Bán kính mặc định
+
+    // Chọn bộ màu và bán kính dựa trên yêu cầu
+    if (colorScheme === 'fire') {
+        colors = [
+            'rgba(255, 255, 255, 0.9)', // Trắng
+            'rgba(255, 220, 0, 0.8)',   // Vàng
+            'rgba(255, 150, 0, 0.8)',   // Cam
+            'rgba(255, 50, 0, 0.7)'     // Đỏ
+        ];
+        maxDist = 60; // Bán kính nổ của tên lửa
+    } else if (colorScheme === 'smoke') {
+        colors = [
+            'rgba(200, 200, 200, 0.7)', // Xám sáng
+            'rgba(150, 150, 150, 0.6)', // Xám vừa
+            'rgba(100, 100, 100, 0.5)'  // Xám tối
+        ];
+        maxDist = 80; // Bán kính của bom khói
+    }
 
     for (let i = 0; i < count; i++) {
         const angle = Math.random() * Math.PI * 2;
-        const speed = 2 + Math.random() * 2;
+        const speed = 1 + Math.random() * 2;
 
-        // THAY ĐỔI: Chọn một màu ngẫu nhiên từ trong mảng
-        const color = explosionColors[Math.floor(Math.random() * explosionColors.length)];
+        const color = colors[Math.floor(Math.random() * colors.length)];
 
         particles.push({
             x: x,
             y: y,
             vx: Math.cos(angle) * speed,
             vy: Math.sin(angle) * speed,
-            size: Math.random() * 3 + 1,
-            color: color, // Gán màu ngẫu nhiên đã chọn
+            size: Math.random() * 4 + 2,
+            color: color,
             alpha: 1,
             fastFade: true,
             originX: x,
             originY: y,
-            maxDistance: 60 // phạm vi vụ nổ tên lửa F18
+            maxDistance: maxDist
         });
     }
 }
+
 /**
  * Tạo một đối tượng hiệu ứng dying và thêm vào mảng healEffects.
  */
@@ -1616,8 +1678,12 @@ function shoot() {
 }
 
 function autoShootBurst() {
-  const now = Date.now();
-  if (now - lastAutoShootTime >= autoShootCooldown) {
+const now = Date.now();
+let currentCooldown = autoShootCooldown; // Lấy cooldown gốc (1000ms)
+if (supportAuraActive) {
+    currentCooldown *= 0.8; // Giảm 20% thời gian chờ -> bắn nhanh hơn 20%
+}
+if (now - lastAutoShootTime >= currentCooldown) {
     lastAutoShootTime = now;
     autoBurstIndex = 0;
   }
@@ -1805,6 +1871,62 @@ document.getElementById("PetBtn").onclick = () => {
   activatePet();                               // kích hoạt thành công
   player.energy -= 5;                          // trừ ⚡ duy nhất 1 lần
 };
+// ✨ Kỹ năng Hào quang
+document.getElementById("supportAuraBtn").onclick = () => {
+    if (player.level < 6) return showWarning("✨ Yêu cầu Lv6");
+    if (player.energy < 15) return showWarning("✨ Không đủ 15⚡");
+    
+    if (!supportAuraActive) {
+        supportAuraActive = true;
+        supportAuraEndTime = Date.now() + 30000;
+        player.energy -= 15;
+        showWarning("✨ Kích hoạt Hào quang!");
+        document.getElementById("supportAuraBtn").classList.add("active");
+
+        // Tạo hiệu ứng các đường nứt
+        auraCrackLines = [];
+        const crackCount = 70;
+        const radius = 45;
+
+        for (let i = 0; i < crackCount; i++) {
+            const angle = Math.random() * Math.PI * 2;
+            const distFromCenter = Math.random() * radius;
+            const length = 5 + Math.random() * 10;
+            
+            const x1 = Math.cos(angle) * distFromCenter;
+            const y1 = Math.sin(angle) * distFromCenter;
+            const x2 = x1 + Math.cos(angle) * length;
+            const y2 = y1 + Math.sin(angle) * length;
+
+            auraCrackLines.push({ x1, y1, x2, y2 });
+        }
+    }
+};
+// 🦋 Kích hoạt kỹ năng Fairy activateFairySkill
+document.getElementById("fairyBtn").onclick = () => {
+  if (player.level < 7) return showWarning("🦋 Yêu cầu Lv7");
+  if (player.energy < 25) return showWarning("🦋 Không đủ 25⚡");
+  if (fairyActive) return; // Không kích hoạt nếu đang trong thời gian hồi
+
+  fairyActive = true;
+  fairyEndTime = Date.now() + 45000; // 45 giây hiệu lực
+  player.energy -= 25;
+  fairyDeathDefyAvailable = true; // Kích hoạt khả năng hồi sinh
+
+  // Tạo các Fairy dựa trên cấp độ nâng cấp
+  fairies = [];
+  const count = skillUpgrades.fairyCount;
+  for (let i = 0; i < count; i++) {
+    fairies.push({
+      angle: (2 * Math.PI / count) * i,
+      orbitRadius: 50 + (i * 10), // Các Fairy bay ở quỹ đạo khác nhau
+      bobOffset: Math.random() * Math.PI * 2, // Hiệu ứng nhấp nhô riêng
+      nextAttackTime: Date.now() + Math.random() * 2000
+    });
+  }
+
+  showWarning("🦋 Triệu hồi Fairy!");
+};
 
 //🧟 6. Sinh zombie và boss
 // 🎨 Màu tương ứng cho zombie cấp 1 → 10
@@ -1883,7 +2005,7 @@ function spawnZombie() {
 
     // 1. Cấu hình HP - bạn có thể dễ dàng thay đổi các số này để cân bằng game
     const HP_CONFIG = {
-        BASE_HP: 1,                  // Máu cơ bản của zombie cấp 1 ở wave 1
+        BASE_HP: 100,                  // Máu cơ bản của zombie cấp 1 ở wave 1
         HP_PER_ZOMBIE_LEVEL: 5,       // Máu cộng thêm cho mỗi cấp của zombie
         HP_PER_WAVE: 2.5,             // Máu cộng thêm cho mỗi wave
         RANDOM_VARIANCE: 0.20,        // Độ chênh lệch HP ngẫu nhiên (+/- 20%)
@@ -2439,8 +2561,16 @@ if (moveX !== 0 || moveY !== 0) {
   const length = Math.hypot(moveX, moveY);
   moveX /= length;
   moveY /= length;
-  player.x += moveX * player.speed;
-  player.y += moveY * player.speed;
+  // Tốc độ player
+let finalSpeed = player.speed;
+if (disguiseActive) {
+    finalSpeed *= 1.5; // Tăng 50% tốc chạy khi biến hình
+}
+if (supportAuraActive) {
+    finalSpeed *= 1.2; // Tăng 20% tốc độ chạy
+}
+player.x += moveX * finalSpeed;
+player.y += moveY * finalSpeed;
   // Giới hạn player trong bản đồ
 player.x = Math.max(wallThickness + player.size, Math.min(worldWidth - wallThickness - player.size, player.x));
 player.y = Math.max(wallThickness + player.size, Math.min(worldHeight - wallThickness - player.size, player.y));
@@ -2534,155 +2664,130 @@ zombies.forEach(z => {
 // --- Buff #1 & #2: Tăng HP vĩnh viễn ---
 // Khi đêm xuống, nhận buff 1 lần
 if (isNight()) {
-    // Ban đêm: Nếu chưa được buff thì buff
-    if (!z.nightBuffApplied) {
-        const nightHpBonus = Math.floor(Math.random() * 9) + 2; // Tăng ngẫu nhiên 2-10 HP
-        z.hp += nightHpBonus;
-        z.baseHp += nightHpBonus;
-        z.nightBuffApplied = true; // Bật công tắc
-        spawnHealEffect(z);
-    }
-} else {
-    // Ban ngày: Tắt công tắc để sẵn sàng cho đêm tới
-    z.nightBuffApplied = false;
-}
-
-// Buff khi sống sót qua ngày mới (logic này giữ nguyên)
-if (currentDay > z.lastDayBuffed) {
-    const survivalHpBonus = Math.round(z.baseHp * 0.1); // Tăng 10% HP gốc
-    z.hp += survivalHpBonus;
-    z.baseHp += survivalHpBonus;
-    z.lastDayBuffed = currentDay;
-    z.isBuffed = true; // Bật cờ "+"
-    spawnHealEffect(z);
-}
-
-// --- LOGIC HỒI MÁU (BAN ĐÊM) VÀ GIẢM MÁU (BAN NGÀY) ---
-if (Date.now() - z.lastRegenTime > 3000) { // 10000ms = 10 giây
-    if (isNight()) {
-        // Chỉ hồi HP vào ban đêm
-        z.hp += 1;
-        z.baseHp += 1;
-        z.lastRegenTime = Date.now();
-        spawnHealEffect(z); // Hiệu ứng 💙
+        if (!z.nightBuffApplied) {
+            const nightHpBonus = Math.floor(Math.random() * 9) + 2;
+            z.hp += nightHpBonus;
+            z.baseHp += nightHpBonus;
+            z.nightBuffApplied = true;
+        }
     } else {
-        // Giảm HP vào ban ngày
-        z.hp -= 1;
-        z.baseHp -= 1;
-        z.lastRegenTime = Date.now();
-        spawnDebuffParticle(z); // Hiệu ứng 💚 mới
-        if (z.hp <= 0 && !z._killed) {
-            killZombie(z);
+        z.nightBuffApplied = false;
+    }
+
+    if (currentDay > z.lastDayBuffed) {
+        const survivalHpBonus = Math.round(z.baseHp * 0.1);
+        z.hp += survivalHpBonus;
+        z.baseHp += survivalHpBonus;
+        z.lastDayBuffed = currentDay;
+        z.isBuffed = true;
+    }
+
+    // --- LOGIC HỒI MÁU (BAN ĐÊM) VÀ GIẢM MÁU (BAN NGÀY) ---
+    if (Date.now() - z.lastRegenTime > 3000) {
+        if (isNight()) {
+            z.hp += 1;
+            z.baseHp += 1;
+            z.lastRegenTime = Date.now();
+        } else {
+            z.hp -= 1;
+            z.baseHp -= 1;
+            z.lastRegenTime = Date.now();
+            if (z.hp <= 0 && !z._killed) {
+                killZombie(z);
+            }
         }
     }
-}
-// --- Debuff #4: Giảm tốc độ ban ngày ---
-// Đoạn này sẽ được áp dụng ở phần di chuyển bên dưới
-  // 👣 Cập nhật hướng di chuyển theo trạng thái
-  // 🧠 AI hành vi zombie
 
-  if (z.state === "wandering") {
-    if (Date.now() >= z.wanderTime) { // Kiểm tra thời gian lang thang
-      z.state = "chasing";
-      z.speed = z.baseSpeed;
-      z.nextStateCheck = Date.now() + 3000;
-    } else {
-      // 👣 Di chuyển hoặc đứng yên
-      if (z.wanderBehavior === "move") {
-        z.x += Math.cos(z.wanderAngle) * z.speed;
-        z.y += Math.sin(z.wanderAngle) * z.speed;
-      }
-      // Nếu pause thì không làm gì (đứng yên)
-    }
-  } else if (z.state === "chasing") {
-    if (Date.now() >= z.nextStateCheck) {
-      z.nextStateCheck = Date.now() + 3000;
-
-      // ❌ Boss không được chuyển sang wandering
-      if (!z.isBoss) {
-        const pauseChance = isNight() ? 1 : 0.2; // 🌙 Đêm 100%, ngày 20%
-        z.state = "wandering";
-        z.wanderTime = Date.now() + 1500 + Math.random() * 8500; // Thời gian hành vi Zzz từ 1.5s - 10s
-        z.wanderAngle = Math.random() * Math.PI * 2;
-        z.speed = 0.15 + Math.random() * 0.05;
-        z.wanderBehavior = Math.random() < pauseChance ? "pause" : "move"; // 50% đêm, 20% ngày
-        return;
-      }
-    }
-// 👊 Nếu vẫn chasing → đuổi theo player
-      const angle = Math.atan2(player.y - z.y, player.x - z.x);
-      // Tính toán tốc độ cuối cùng dựa trên ngày/đêm
-      let finalSpeed = z.speed;
-      if (!isNight()) {
-          finalSpeed *= 0.7; // Giảm 30% tốc độ vào ban ngày
-      }
-      // Di chuyển với tốc độ cuối cùng
-      z.x += Math.cos(angle) * finalSpeed;
-      z.y += Math.sin(angle) * finalSpeed;
-}
-
-  // Zombie bắn trả
-  // 🧠 Boss hoặc mini boss bắn 1 lần mỗi 10 giây
-  if (z.isBoss || z.type === "miniBoss") {
-    if (!z.lastShoot) z.lastShoot = 0;
-    const now = Date.now();
-    if (now - z.lastShoot >= 8000) { // Boss bắn mỗi 8 giây
-      z.lastShoot = now;
-      shootEnemyBullet(z.x, z.y, 0.8, 0.8); // 80% xác suất
-    }
-  }
-
-  // 👾 Zombie thường chỉ bắn sau mỗi 60s và có 1% xác suất
-  if (!z.isBoss && z.type !== "miniBoss") {
-    if (!z.lastShoot) z.lastShoot = 0;
-    const now = Date.now();
-    if (now - z.lastShoot >= 60000) { // Zombie thường bắn mỗi 60 giây
-      z.lastShoot = now;
-      shootEnemyBullet(z.x, z.y, 0.6 + Math.random() * 0.6, 0.001); // 0.1% xác suất
-    }
-  }
-
-  // 🧟 Xử lý va chạm với player
-  if (distance(z, player) < z.radius + player.size) {
-    // 🛡️ Nếu khiên đang hoạt động, zombie không được phép vào bên trong
-    if (player.shieldActive) {
-      const shieldRadius = 48;
-      const repelDistance = shieldRadius + z.radius;
-      const dist = distance(z, player);
-      if (dist < repelDistance) {
-        const dx = z.x - player.x;
-        const dy = z.y - player.y;
-        const angle = Math.atan2(dy, dx);
-        const pushBack = (repelDistance - dist) + 20;
-        z.x += Math.cos(angle) * pushBack;
-        z.y += Math.sin(angle) * pushBack;
-        return;
-      }
-    }
-
-    const dist = distance(z, player);
-    if (dist < z.radius + player.size) {
-      if (z.canHit) {
-        player.hearts--;
-        explosions.push(getExplosion(z.x, z.y));
-        z.canHit = false;
-        setTimeout(() => { z.canHit = true; }, 500);
-        if (player.hearts <= 0) {
-handlePlayerDeath(); 
+    // --- 👣 Cập nhật hướng di chuyển theo trạng thái ---
+    if (z.state === "wandering") {
+        if (Date.now() >= z.wanderTime) {
+            z.state = "chasing";
+            z.speed = z.baseSpeed;
+            z.nextStateCheck = Date.now() + 3000;
+        } else {
+            if (z.wanderBehavior === "move") {
+                z.x += Math.cos(z.wanderAngle) * z.speed;
+                z.y += Math.sin(z.wanderAngle) * z.speed;
+            }
         }
-      }
-      const dx = z.x - player.x;
-      const dy = z.y - player.y;
-      const angle = Math.atan2(dy, dx);
-      const pushBack = (z.radius + player.size - dist) + 1;
-      z.x += Math.cos(angle) * pushBack;
-      z.y += Math.sin(angle) * pushBack;
+    } else if (z.state === "chasing") {
+        if (Date.now() >= z.nextStateCheck) {
+            if (!z.isBoss) {
+                const pauseChance = isNight() ? 1 : 0.2;
+                z.state = "wandering";
+                z.wanderTime = Date.now() + 1500 + Math.random() * 8500;
+                z.wanderAngle = Math.random() * Math.PI * 2;
+                z.speed = 0.15 + Math.random() * 0.05;
+                z.wanderBehavior = Math.random() < pauseChance ? "pause" : "move";
+                return;
+            }
+        }
+        const angle = Math.atan2(player.y - z.y, player.x - z.x);
+        let finalSpeed = z.speed;
+        if (!isNight()) {
+            finalSpeed *= 0.7;
+        }
+        z.x += Math.cos(angle) * finalSpeed;
+        z.y += Math.sin(angle) * finalSpeed;
     }
-  }
 
-  // 🚫 Giới hạn zombie không vượt khỏi bản đồ
-  z.x = Math.max(wallThickness + z.radius, Math.min(worldWidth - wallThickness - z.radius, z.x));
-  z.y = Math.max(wallThickness + z.radius, Math.min(worldHeight - wallThickness - z.radius, z.y));
+    // --- Zombie bắn trả ---
+    if (z.isBoss || z.type === "miniBoss") {
+        if (!z.lastShoot) z.lastShoot = 0;
+        const now = Date.now();
+        if (now - z.lastShoot >= 8000) {
+            z.lastShoot = now;
+            shootEnemyBullet(z.x, z.y, 0.8, 0.8);
+        }
+    }
+    if (!z.isBoss && z.type !== "miniBoss") {
+        if (!z.lastShoot) z.lastShoot = 0;
+        const now = Date.now();
+        if (now - z.lastShoot >= 60000) {
+            z.lastShoot = now;
+            shootEnemyBullet(z.x, z.y, 0.6 + Math.random() * 0.6, 0.001);
+        }
+    }
+
+    // --- 🧟 Xử lý va chạm với player ---
+    if (distance(z, player) < z.radius + player.size) {
+        if (player.shieldActive) {
+            const shieldRadius = 48;
+            const repelDistance = shieldRadius + z.radius;
+            const dist = distance(z, player);
+            if (dist < repelDistance) {
+                const dx = z.x - player.x;
+                const dy = z.y - player.y;
+                const angle = Math.atan2(dy, dx);
+                const pushBack = (repelDistance - dist) + 20;
+                z.x += Math.cos(angle) * pushBack;
+                z.y += Math.sin(angle) * pushBack;
+                return;
+            }
+        }
+        const dist = distance(z, player);
+        if (dist < z.radius + player.size) {
+            if (z.canHit) {
+                player.hearts--;
+                explosions.push(getExplosion(z.x, z.y));
+                z.canHit = false;
+                setTimeout(() => { z.canHit = true; }, 500);
+                if (player.hearts <= 0) {
+                    handlePlayerDeath(); 
+                }
+            }
+            const dx = z.x - player.x;
+            const dy = z.y - player.y;
+            const angle = Math.atan2(dy, dx);
+            const pushBack = (z.radius + player.size - dist) + 1;
+            z.x += Math.cos(angle) * pushBack;
+            z.y += Math.sin(angle) * pushBack;
+        }
+    }
+
+    // --- 🚫 Giới hạn zombie không vượt khỏi bản đồ ---
+    z.x = Math.max(wallThickness + z.radius, Math.min(worldWidth - wallThickness - z.radius, z.x));
+    z.y = Math.max(wallThickness + z.radius, Math.min(worldHeight - wallThickness - z.radius, z.y));
 });
 // BigBoss logic - Tạo bigboss và hồi sinh mỗi 60s
 // 🎯 BigBoss chỉ bắt đầu đếm từ wave 5 trở lên
@@ -2862,6 +2967,25 @@ for (let j = 0; j < zombies.length; j++) {
   if (!z.active) continue;
 
 if (distance(b, z) < 20) {
+  // Nếu đây là đạn của Fairy
+  if (b.isFairyBullet) {
+      // Áp dụng hiệu ứng đặc biệt thay vì gây sát thương
+      if (b.effect === 'sleep') {
+          z.isSleeping = true;
+          z.sleepUntil = Date.now() + 3000;
+      } else if (b.effect === 'wandering') {
+          z.state = 'wandering';
+          z.wanderTime = Date.now() + 3000;
+      }
+
+      // Tạo hiệu ứng hạt dính vào zombie
+      for (let i = 0; i < 4; i++) {
+          createFairyHitParticle(z);
+      }
+      
+      releaseBullet(b); // Xóa viên đạn
+      break; // Dừng kiểm tra với các zombie khác
+  }
 // ✨ NEW: chỉ dùng customDmg nếu đạn đó đã gán sẵn baseDamage,
 // còn lại thì mới rơi về damageBoost chung của người chơi.
 const dmg = (b.customDmg !== undefined)
@@ -3085,133 +3209,132 @@ lightningBolts.forEach((bolt, i) => {
     });
 }
 blackHoles = blackHoles.filter(hole => {
-  if (Date.now() >= hole.endTime) return false; // hết thời gian thì xoá
-  hole.tick++;
+    if (Date.now() >= hole.endTime) return false;
+    hole.tick++;
 
-  // 🧲 Hút zombie xung quanh vào hố đen
-  zombies.forEach(z => {
-    if (!z.active) return;
-    const d = distance(hole, z);
-    if (d < hole.radius) {
-      const angle = Math.atan2(hole.y - z.y, hole.x - z.x);
-      z.x += Math.cos(angle) * hole.pullSpeed;
-      z.y += Math.sin(angle) * hole.pullSpeed;
+    zombies.forEach(z => {
+        if (!z.active) return;
+        const d = distance(hole, z);
 
-      // 💥 Gây sát thương mỗi 30 frame (giữ nguyên)
-      if (hole.tick % 30 === 0) {
-        dealDamageToZombie(z, hole.damage);
-      }
+        // ✨ THAY ĐỔI: Sử dụng "pullRadius" để kiểm tra phạm vi
+        if (d < hole.pullRadius) {
+            // ✨ THAY ĐỔI: Sử dụng "pullRadius" để tính lực hút
+            const pullForce = (1 - d / hole.pullRadius) * hole.pullSpeed * 2;
+
+            const angle = Math.atan2(hole.y - z.y, hole.x - z.x);
+            z.x += Math.cos(angle) * pullForce;
+            z.y += Math.sin(angle) * pullForce;
+
+            if (hole.tick % 30 === 0) {
+                dealDamageToZombie(z, hole.damage);
+            }
+        }
+    });
+    // 🧲 Hút đạn zombie vào hố đen (giữ nguyên)
+    enemyBullets.forEach(b => {
+        if (!b.active) return;
+        // (Tùy chọn) Bạn cũng có thể đổi "hole.radius" ở đây thành "hole.pullRadius"
+        // nếu muốn đạn cũng bị hút từ xa.
+        if (distance(hole, b) < hole.pullRadius) { 
+            const angle = Math.atan2(hole.y - b.y, hole.x - b.x);
+            b.x += Math.cos(angle) * hole.pullSpeed;
+            b.y += Math.sin(angle) * hole.pullSpeed;
+            if (distance(hole, b) < 20) {
+                releaseEnemyBullet(b);
+            }
+        }
+    });
+    hole.x += hole.dx;
+    hole.y += hole.dy;
+    hole.x = Math.max(wallThickness, Math.min(worldWidth - wallThickness, hole.x));
+    hole.y = Math.max(wallThickness, Math.min(worldHeight - wallThickness, hole.y));
+// Spawn hạt
+    if (hole.tick % 3 === 0) {
+        createVortexParticle(hole.x, hole.y, hole.pullRadius);
     }
-  });
-
-  // 🧲 Hút đạn zombie vào hố đen (mới thêm)
-  enemyBullets.forEach(b => {
-    if (!b.active) return;
-    const d = distance(hole, b);
-    if (d < hole.radius) {
-      const angle = Math.atan2(hole.y - b.y, hole.x - b.x);
-      b.x += Math.cos(angle) * hole.pullSpeed;
-      b.y += Math.sin(angle) * hole.pullSpeed;
-
-      if (d < 20) {
-        releaseEnemyBullet(b); // 💥 Xóa đạn nếu vào gần tâm
-      }
-    }
-  });
-// ➕ Di chuyển chậm
-hole.x += hole.dx;
-hole.y += hole.dy;
-
-// 🚫 Giới hạn trong bản đồ
-hole.x = Math.max(wallThickness, Math.min(worldWidth - wallThickness, hole.x));
-hole.y = Math.max(wallThickness, Math.min(worldHeight - wallThickness, hole.y));
-  // —— Spawn bụi bị hút —— //
-  if (hole.tick % 5 === 0) {               // 60 fps → 12 hạt/giây
-  createSuctionDust(hole.x, hole.y, hole.radius + 60);
-}
-  return true;
+    return true;
 });
 // 🎯 Clone tự tìm zombie gần và bắn
 if (clonesActive) {
-  // ⏱ Hết thời gian hoạt động → xóa clone
-  if (Date.now() >= clonesEndTime) {
-    clonesActive = false;
-    clones = [];
-  } else {
-    clones.forEach(clone => {
-      // 🎯 Tìm zombie gần nhất trong phạm vi 600px
-      const target = zombies.find(z => z.active && distance(clone, z) < 600);
+    // 1. Kiểm tra hết hạn kỹ năng
+    if (Date.now() >= clonesEndTime) {
+        clonesActive = false;
+        clones = [];
+    } else {
+        // 2. Logic tìm mục tiêu mới: Tìm zombie gần PLAYER
+        const nearbyZombies = zombies
+            .filter(z => z.active && distance(player, z) < 600)
+            .sort((a, b) => distance(player, a) - distance(player, b));
 
-      if (target) {
-        const angle = Math.atan2(target.y - clone.y, target.x - clone.x);
-        const dist = distance(clone, target);
+        // 3. Cập nhật từng clone
+        clones.forEach((clone, i) => {
+            const target = nearbyZombies[i]; // Clone 0 nhắm mục tiêu gần nhất, Clone 1 nhắm mục tiêu gần thứ hai
 
-        // 👣 Chỉ di chuyển nếu clone cách zombie > 250px
-        if (dist > 250) {
-          clone.x += Math.cos(angle) * clone.moveSpeed;  // tốc độ di chuyển
-          clone.y += Math.sin(angle) * clone.moveSpeed;
-        }
-        // 🔫 Bắn đạn mỗi 1s nếu trong tầm
-        if (Date.now() - clone.lastShot >= 1000) {
-          clone.lastShot = Date.now();
-          const b = getBullet();
-          b.x = clone.x;
-          b.y = clone.y;
-          b.dx = Math.cos(angle);
-          b.dy = Math.sin(angle);
-          b.speed = 3;                        // tốc độ đạn
-          b.active = true;
-          b.customDmg = clone.baseDamage;     // sát thương riêng clone
-          b.color = "#ff66ff"; // 💜 đạn clone hiện màu tím
-          bullets.push(b);
-        }
-      } else {
-// 😴 Nếu không có zombie → clone lượn quanh player trong phạm vi 600
-const distFromPlayer = distance(clone, player);
-if (distFromPlayer > 600) {
-  // ⚠️ Đã vượt xa 600 → ép quay đầu và kéo về gần player ngay lập tức
-  const angleBack = Math.atan2(player.y - clone.y, player.x - clone.x);
-  clone.x += Math.cos(angleBack) * clone.moveSpeed * 2;
-  clone.y += Math.sin(angleBack) * clone.moveSpeed * 2;
+            if (target) {
+                const angle = Math.atan2(target.y - clone.y, target.x - clone.x);
+                const dist = distance(clone, target);
 
-  // Cập nhật hướng di chuyển lại nếu cần tiếp tục di chuyển tự do sau đó
-  clone.moveAngle = angleBack;
-} else {
-  // 🌀 Nếu còn trong phạm vi → tiếp tục lượn tự do
-  clone.x += Math.cos(clone.moveAngle) * clone.moveSpeed;
-  clone.y += Math.sin(clone.moveAngle) * clone.moveSpeed;
+                // Di chuyển nếu ở quá xa mục tiêu
+                if (dist > 250) {
+                    clone.x += Math.cos(angle) * clone.moveSpeed;
+                    clone.y += Math.sin(angle) * clone.moveSpeed;
+                }
+
+                // Bắn đạn mỗi giây
+                if (Date.now() - clone.lastShot >= 1000) {
+                    clone.lastShot = Date.now();
+                    clone.shotCount++; // Tăng bộ đếm đạn
+    console.log(`Clone ${i} đã bắn. Số đạn: ${clone.shotCount}`);
+
+                    // --- LOGIC BẮN LAZER MỚI ---
+                    if (clone.shotCount >= 10) {
+                        clone.shotCount = 0; // Reset bộ đếm
+
+                        // Tạo hiệu ứng lazer
+                        activeCloneLasers.push({
+                            cloneId: clone.id, // (THAY ĐỔI) Lưu ID của clone đã bắn
+                            endX: target.x, endY: target.y,
+                            life: 120 // Lazer clone tồn tại trong 2 giây
+                        });
+
+                        // Gây sát thương lazer (ví dụ: gấp 3 sát thương thường)
+                        dealDamageToZombie(target, clone.baseDamage * 3);
+                        
+                    } else {
+                        // Bắn đạn thường
+                        const b = getBullet();
+                        b.x = clone.x;
+                        b.y = clone.y;
+                        b.dx = Math.cos(angle);
+                        b.dy = Math.sin(angle);
+                        b.speed = 3;
+                        b.active = true;
+                        b.customDmg = clone.baseDamage;
+                        b.color = "#ff66ff";
+                        bullets.push(b);
+                    }
+                }
+            } else {
+                // Logic lượn lờ quanh player khi không có mục tiêu (giữ nguyên)
+                const distFromPlayer = distance(clone, player);
+                if (distFromPlayer > 150) { // Giảm khoảng cách lượn lờ
+                    const angleBack = Math.atan2(player.y - clone.y, player.x - clone.x);
+                    clone.x += Math.cos(angleBack) * clone.moveSpeed;
+                    clone.y += Math.sin(angleBack) * clone.moveSpeed;
+                }
+            }
+
+            // Giới hạn clone trong bản đồ và giữ khoảng cách (giữ nguyên)
+            clone.x = Math.max(wallThickness, Math.min(worldWidth - wallThickness, clone.x));
+            clone.y = Math.max(wallThickness, Math.min(worldHeight - wallThickness, clone.y));
+        });
+    }
 }
-
-      }
-
-      // 🧱 Giới hạn clone trong bản đồ
-      clone.x = Math.max(wallThickness, Math.min(worldWidth - wallThickness, clone.x));
-      clone.y = Math.max(wallThickness, Math.min(worldHeight - wallThickness, clone.y));
-      // ⚖️ Giữ khoảng cách giữa 2 clone tối thiểu 20px
-if (clones.length === 2) {
-  const a = clones[0], b = clones[1];
-  const dx = b.x - a.x;
-  const dy = b.y - a.y;
-  const dist = Math.sqrt(dx * dx + dy * dy);
-  const minDist = 40; // khoảng cách tối thiểu giữa 2 clone
-
-  if (dist < minDist && dist > 0.1) {
-    const push = (minDist - dist) / 2;
-    const angle = Math.atan2(dy, dx);
-    const offsetX = Math.cos(angle) * push;
-    const offsetY = Math.sin(angle) * push;
-
-    // đẩy nhẹ mỗi clone ra xa nhau
-    a.x -= offsetX;
-    a.y -= offsetY;
-    b.x += offsetX;
-    b.y += offsetY;
-  }
-}
-
-    });
-  }
-}
+// Cập nhật và xóa các tia lazer đã hết hạn
+activeCloneLasers = activeCloneLasers.filter(laser => {
+    laser.life--;
+    return laser.life > 0;
+});
 // === Kỹ năng "🩸 Quả Cầu Hấp Huyết"
 if (bloodOrbActive) {
     if (Date.now() > bloodOrbEndTime) {
@@ -3305,6 +3428,295 @@ thunderBalls.forEach(ball => {
   });
 });
 }
+// Cập nhật trạng thái và hồi máu cho Hào quang
+if (supportAuraActive) {
+    if (Date.now() > supportAuraEndTime) {
+        supportAuraActive = false;
+        auraCrackLines = []; // Dọn dẹp
+        auraLightBeams = [];
+        document.getElementById("supportAuraBtn").classList.remove("active");
+    } else {
+        // Hồi HP mỗi giây
+        if (Date.now() - lastAuraHealTime > 3000) {
+            lastAuraHealTime = Date.now();
+            player.hearts++;
+            // spawnHealEffect(player); // Có thể bỏ để tránh rối mắt
+        }
+        
+        // --- LOGIC TẠO HIỆU ỨNG MỚI ---
+        const auraRadiusX = 50;
+
+        // 1. Tạo các hạt vàng bay lên
+        if (frame % 15 === 0) {
+            const pX = (player.x - auraRadiusX) + Math.random() * (auraRadiusX * 2);
+            const pY = player.y + player.size - 5;
+            
+            particles.push({
+                x: pX, y: pY,
+                type: 'aura_particle', // Đánh dấu đây là hạt bay lên
+                vx: (Math.random() - 0.5) * 0.1, // <--- Hướng bay ngang ngẫu nhiên
+                vy: -0.5 - Math.random() * 0.5,   // <--- Hướng bay lên trên
+                size: 0.5 + Math.random() * 0.5,  // <--- Kích thước của hạt
+                color: 'rgba(255, 215, 0, 0.8)', // <--- Màu sắc của hạt
+                alpha: 1,
+                alphaDecay: 0.005 // (MỚI) Tốc độ mờ dần riêng
+            });
+        }
+        
+        // 2. Tạo các cột sáng
+        if (frame % 20 === 0) {
+            const beamX = (player.x - auraRadiusX) + Math.random() * (auraRadiusX * 2);
+            auraLightBeams.push({
+                x: beamX,
+                width: 0.5 + Math.random() * 1,
+                alpha: 0,
+                life: 60,
+                initialLife: 60,
+            });
+        }
+
+        // Cập nhật nút bấm
+        const remain = Math.ceil((supportAuraEndTime - Date.now()) / 1000);
+        document.getElementById("supportAuraBtn").innerText = `✨ ${remain}s`;
+    }
+} else if (document.getElementById("supportAuraBtn").innerText !== "✨ Heal") {
+    document.getElementById("supportAuraBtn").innerText = "✨ Heal";
+}
+
+auraLightBeams = auraLightBeams.filter(beam => {
+    beam.life--;
+    // Hiệu ứng alpha mờ vào rồi mờ ra
+    beam.alpha = Math.sin((1 - beam.life / beam.initialLife) * Math.PI);
+    return beam.life > 0;
+});
+// ================== CẬP NHẬT CỔNG KHÔNG GIAN ==================
+// GIAI ĐOẠN 1: THU NHỎ KHI ĐANG DỊCH CHUYỂN
+if (player.isTeleporting) {
+    player.size *= 0.92; // Thu nhỏ người chơi
+    if (spaceGate) {
+        spaceGate.radius *= 0.92; // Thu nhỏ cổng
+    }
+
+    // Khi đã đủ nhỏ thì thực hiện dịch chuyển
+    if (player.size < 1) {
+        player.isTeleporting = false; // Dừng thu nhỏ
+        player.isGrowingAfterTeleport = true; // Bắt đầu phóng to
+
+        const targetLocation = findSafeTeleportLocation();
+        player.x = targetLocation.x;
+        player.y = targetLocation.y;
+        
+        // ✨ THÊM LẠI DÒNG NÀY ĐỂ BẮT ĐẦU ĐẾM DELAY 1.5 GIÂY
+        lastTeleportTime = Date.now();
+        
+        // Cập nhật camera ngay lập tức
+        camera.x = player.x - canvas.width / 2;
+        camera.y = player.y - canvas.height / 2;
+        camera.x = Math.max(0, Math.min(worldWidth - canvas.width, camera.x));
+        camera.y = Math.max(0, Math.min(worldHeight - canvas.height, camera.y));
+
+        // Tạo cổng mới tại điểm đến (nếu kỹ năng còn thời gian)
+        if (Date.now() < spaceGateEndTime) {
+            createNewGate(player.x, player.y);
+        } else {
+            spaceGateActive = false;
+            spaceGate = null;
+        }
+    }
+}
+// GIAI ĐOẠN 2: PHÓNG TO SAU KHI DỊCH CHUYỂN
+else if (player.isGrowingAfterTeleport) {
+    // Lớn dần về kích thước gốc một cách mượt mà
+    player.size += (player.originalSize - player.size) * 0.1;
+
+    // Khi đã gần bằng kích thước gốc thì kết thúc
+    if (player.originalSize - player.size < 0.1) {
+        player.size = player.originalSize; // Hoàn tác về kích thước chuẩn
+        player.isGrowingAfterTeleport = false; // Kết thúc
+
+        // Đẩy nhẹ người chơi ra để tránh vào lại cổng ngay
+        const pushAngle = Math.random() * Math.PI * 2;
+        player.x += Math.cos(pushAngle) * 40;
+        player.y += Math.sin(pushAngle) * 40;
+    }
+}
+// TRẠNG THÁI CỔNG BÌNH THƯỜNG (khi không dịch chuyển)
+else if (spaceGateActive && spaceGate) {
+    const now = Date.now();
+    
+    // Hủy cổng khi hết giờ
+    if (now > spaceGateEndTime) {
+        spaceGateActive = false;
+        spaceGate = null;
+    } else {
+        // --- CÁC CẬP NHẬT XẢY RA MỖI FRAME ---
+        if (spaceGate.alpha < 1) spaceGate.alpha += 0.05;
+        spaceGate.rotation += 0.04;
+
+        // --- CÁC CẬP NHẬT TỐI ƯU (CHỈ CHẠY MỖI 3 FRAME) ---
+        if (frame % 3 === 0) {
+            // 1. Tạo hạt màu vàng trang trí
+            createGateOrbitParticle(spaceGate);
+
+            // 2. Xử lý hút và sát thương (zombie và đạn)
+            // ✨ Giữ nguyên chỉ số PULL_RADIUS = 80 của bạn
+            const PULL_RADIUS = 80, KILL_RADIUS = 25, PULL_SPEED = 1.8;
+            const PULL_RADIUS_SQ = PULL_RADIUS * PULL_RADIUS;
+            const KILL_RADIUS_SQ = KILL_RADIUS * KILL_RADIUS;
+            const BULLET_PULL_SPEED = PULL_SPEED * 2.5;
+
+            // Vòng lặp xử lý ZOMBIE
+            zombies.forEach(z => {
+                if (!z.active) return;
+                const dSq = distanceSq(spaceGate, z);
+
+                if (dSq < PULL_RADIUS_SQ) {
+                    const angle = Math.atan2(spaceGate.y - z.y, spaceGate.x - z.x);
+                    z.x += Math.cos(angle) * PULL_SPEED;
+                    z.y += Math.sin(angle) * PULL_SPEED;
+                    if (!z.gateDamageCooldown || now > z.gateDamageCooldown) {
+                        dealDamageToZombie(z, spaceGate.damage);
+                        z.gateDamageCooldown = now + 500;
+                    }
+                }
+                
+                if (dSq < KILL_RADIUS_SQ) {
+                    killZombie(z);
+                    explosions.push(getExplosion(z.x, z.y));
+                }
+            });
+            
+            // Vòng lặp xử lý ĐẠN
+            enemyBullets.forEach(b => {
+                if (!b.active) return;
+                const dSq = distanceSq(spaceGate, b);
+
+                if (dSq < PULL_RADIUS_SQ) {
+                    const angle = Math.atan2(spaceGate.y - b.y, spaceGate.x - b.x);
+                    b.x += Math.cos(angle) * BULLET_PULL_SPEED;
+                    b.y += Math.sin(angle) * BULLET_PULL_SPEED;
+                    
+                    if (dSq < KILL_RADIUS_SQ) { 
+                        releaseEnemyBullet(b);
+                        explosions.push(getExplosion(b.x, b.y));
+                    }
+                }
+            });
+        }
+
+        // Kích hoạt dịch chuyển khi người chơi bước vào (giữ nguyên)
+        const canUseGate = now > lastTeleportTime + GATE_COOLDOWN;
+        if (canUseGate && distance(player, spaceGate) < spaceGate.radius) {
+            player.originalSize = player.size; 
+            player.isTeleporting = true;
+        }
+    }
+}
+
+// --- Logic Kỹ năng Fairy ---
+if (fairyActive) {
+    const now = Date.now();
+    const fairyBtn = document.getElementById("fairyBtn");
+
+    // 1. Kiểm tra hết hạn và cập nhật nút
+    if (now > fairyEndTime) {
+        fairyActive = false;
+        fairies = [];
+        // Trừ đi lượng sát thương đã cộng vào
+        playerUpgrades.damageBoost -= fairyDamageBonus;
+        fairyDamageBonus = 0;
+        fairyBtn.classList.remove("active");
+        fairyBtn.innerText = "🦋 Fairy";
+    } else {
+        fairyBtn.classList.add("active");
+        const remain = Math.ceil((fairyEndTime - now) / 1000);
+        fairyBtn.innerText = `🦋 ${remain}s`;
+
+        // 2. Tính toán hiệu ứng buff dựa trên ngày/đêm
+        let healAmount = 0;
+        let damageAmount = 0;
+
+        if (isNight()) {
+            healAmount = 2 + (skillUpgrades.fairyHealLevel * 2);
+            damageAmount = 1 + (skillUpgrades.fairyDamageLevel * 0.5); // Ban đêm tăng ít hơn
+        } else {
+            healAmount = 1 + (skillUpgrades.fairyHealLevel * 1); // Ban ngày tăng ít hơn
+            damageAmount = 2 + skillUpgrades.fairyDamageLevel;
+        }
+
+        // Giới hạn hồi máu tối đa
+        healAmount = Math.min(healAmount, isNight() ? 10 : 5);
+
+        // 3. Áp dụng buff sát thương
+        // Trừ bonus cũ, cộng bonus mới để luôn cập nhật đúng
+        playerUpgrades.damageBoost -= fairyDamageBonus;
+        fairyDamageBonus = damageAmount * skillUpgrades.fairyCount; // Mỗi Fairy cộng 1 lần
+        playerUpgrades.damageBoost += fairyDamageBonus;
+
+        // 4. Áp dụng hồi máu mỗi giây
+        if (now - lastFairyHealTime > 5000) {
+            player.hearts += healAmount * skillUpgrades.fairyCount; // Mỗi Fairy hồi 1 lần
+            lastFairyHealTime = now;
+            if (healAmount > 0) showWarning(`❤️ +${healAmount * skillUpgrades.fairyCount}`);
+        }
+
+        // 5. Di chuyển các Fairy và tạo hiệu ứng hạt
+        fairies.forEach((fairy, index) => {
+            fairy.angle += 0.02;
+            fairy.x = player.x + Math.cos(fairy.angle) * fairy.orbitRadius;
+            const bob = Math.sin(frame * 0.05 + fairy.bobOffset) * 5;
+            fairy.y = player.y + Math.sin(fairy.angle) * fairy.orbitRadius + bob;
+
+            if (frame % 5 === 0) { // Giảm tần suất tạo hạt
+                createFairyParticle(fairy.x, fairy.y);
+            }
+                        // ✨ BẮT ĐẦU LOGIC TẤN CÔNG MỚI
+            if (now > fairy.nextAttackTime) {
+                fairy.nextAttackTime = now + 1000; // Thời gian fairy tấn công
+
+                let nearestZombie = null;
+                let minDistance = 600;
+                zombies.forEach(z => {
+                    if (z.active && !z.isSleeping) { // Thêm điều kiện không tấn công zombie đang ngủ
+                        const d = distance(fairy, z);
+                        if (d < minDistance) {
+                            minDistance = d;
+                            nearestZombie = z;
+                        }
+                    }
+                });
+
+                // ✨ NẾU TÌM THẤY MỤC TIÊU THÌ MỚI TẤN CÔNG VÀ BẮT ĐẦU HỒI CHIÊU ✨
+                if (nearestZombie) {
+                    // Đặt lại thời gian hồi chiêu NGAY SAU KHI TẤN CÔNG
+                    fairy.nextAttackTime = now + 1000;
+
+                    // Lấy một viên đạn từ kho và bắn
+                    const b = getBullet();
+                    b.x = fairy.x; // Vị trí bắt đầu là từ Fairy
+                    b.y = fairy.y;
+                    
+                    // 2. Tính toán hướng bay tới mục tiêu
+                    const angle = Math.atan2(nearestZombie.y - fairy.y, nearestZombie.x - fairy.x);
+                    b.dx = Math.cos(angle);
+                    b.dy = Math.sin(angle);
+                    
+                    // 3. Gán các thuộc tính đặc biệt cho đạn của Fairy
+                    b.speed = 2;
+                    b.isFairyBullet = true; // Đánh dấu đây là đạn của Fairy
+                    b.piercing = false;      // Đạn sẽ biến mất khi trúng mục tiêu
+                    b.effect = isNight() ? 'sleep' : 'wandering'; // Gán hiệu ứng
+                    
+                    // 4. Thêm viên đạn vào hệ thống chung của game
+                    bullets.push(b);
+                }
+            }
+            // ✨ KẾT THÚC LOGIC TẤN CÔNG MỚI
+        });
+        
+    }
+}
+
 updateParticles();
 updatePet();   // 🐰 xử lý pet mỗi frame
 zombies = zombies.filter(z => z.active);
@@ -3599,36 +4011,61 @@ function createBloodOrbParticleOnBeam(orb) {
         fastFade: true // Đánh dấu hạt tan nhanh
     });
 }
-
+// Vẽ Fairy và hiệu ứng hạt
+function createFairyParticle(x, y) {
+    particles.push({
+        // Loại hạt này không cần type vì dùng logic mặc định
+        x: x,
+        y: y,
+        vx: (Math.random() - 0.5) * 0.5,
+        vy: (Math.random() - 0.5) * 0.5,
+        size: Math.random() * 0.5 + 0.5,
+        color: 'rgba(0, 255, 255, 0.7)', // Màu xanh cyan phát sáng
+        alpha: 1,
+        fastFade: true // Mờ nhanh
+    });
+}
 // Tạo 1 hạt nhỏ bay ngược vào quả cầu mỗi khi hút máu
 function createBloodOrbParticle(orb) {
   createSuctionDust(orb.x, orb.y, 40, "rgba(255,0,0,0.6)", true);
 }
-/**
- * Sinh 1 hạt bụi bay vào (cx, cy)
- * @param {number} cx, cy   – toạ độ tâm cần hút
- * @param {number} spread   – khoảng đặt hạt (mặc định 250-300 px)
- * @param {string} color    – màu/độ mờ hạt
- * @param {boolean} fast    – tan nhanh (dùng cho tia máu)
- */
-function createSuctionDust(cx, cy, spread = 250,
-                           color = "rgba(200,200,200,0.5)",
-                           fast = false) {
-  const a      = Math.random() * Math.PI * 2;
-  const r      = spread + Math.random() * 50;
-  const px     = cx + Math.cos(a) * r;
-  const py     = cy + Math.sin(a) * r;
-  const speed  = 0.02;
+// Hàm mới tạo hạt lốc xoáy cho cổng không gian
+function createGateOrbitParticle(gate) {
+    const angle = Math.random() * Math.PI * 2;
+    // Bán kính quỹ đạo sẽ hơi lớn hơn bán kính của cổng một chút
+    const orbitRadius = gate.radius * (1.1 + Math.random() * 0.2);
 
-  particles.push({
-    x : px,          y : py,
-    vx: (cx - px) * speed,
-    vy: (cy - py) * speed,
-    size  : 1 + Math.random() * 2,
-    alpha : 1,
-    color ,
-    fastFade: fast
-  });
+    particles.push({
+        type: 'gate_orbit', // Loại hạt mới để xử lý riêng
+        cx: gate.x,
+        cy: gate.y,
+        orbitRadius: orbitRadius,
+        angle: angle,
+        orbitSpeed: 0.01 + Math.random() * 0.015, // Tốc độ xoay ngẫu nhiên
+        size: 1 + Math.random() * 1.5,
+        alpha: 0.9,
+        life: 60 + Math.floor(Math.random() * 30), // Tuổi thọ của hạt (frame)
+        color: 'rgba(255, 220, 0, 0.8)' // Màu vàng
+    });
+}
+// Hàm mới tạo hạt lốc xoáy cho hố đen
+function createVortexParticle(cx, cy, spawnRadius) {
+    const angle = Math.random() * Math.PI * 2;
+    // Tạo hạt ở một khoảng ngẫu nhiên bên ngoài rìa
+    const radius = spawnRadius * (0.8 + Math.random() * 0.4);
+
+    particles.push({
+        type: 'blackhole_vortex', // Đánh dấu đây là hạt lốc xoáy
+        cx: cx,                   // Lưu tọa độ tâm để xoay quanh
+        cy: cy,
+        orbitRadius: radius,      // Khoảng cách ban đầu tới tâm
+        angle: angle,             // Góc ban đầu
+        pullSpeed: 0.5 + Math.random() * 0.5, // Tốc độ bị hút vào
+        orbitSpeed: 0.02 + Math.random() * 0.001, // Tốc độ xoay
+        size: 1.5 + Math.random() * 1.5,
+        alpha: 0.8,
+        color: 'rgba(10, 10, 20, 0.7)' // Màu tím đậm vũ trụ
+    });
 }
 function triggerPlayerDyingEffect() {
     // Tạo một vụ nổ các hạt màu đỏ tại vị trí người chơi
@@ -3650,6 +4087,17 @@ function triggerPlayerDyingEffect() {
     }
 }
 function handlePlayerDeath() {
+      // Kiểm tra xem kỹ năng Fairy có thể cứu mạng không
+    if (fairyActive && fairyDeathDefyAvailable) {
+        fairyDeathDefyAvailable = false; // Dùng hết 1 lần cứu mạng
+        player.hearts = 10; // Hồi lại 10 HP
+        player.hitTimer = 180; // Bất tử 3 giây
+        showWarning("🦋 Fairy đã cứu bạn!");
+        
+        // Quan trọng: Dừng hàm tại đây để không thực hiện logic chết
+        return; 
+    }
+
     if (player.isDying) return; // Ngăn việc gọi lại nhiều lần
 
     player.isDying = true;
@@ -3663,43 +4111,109 @@ function handlePlayerDeath() {
 }
 // Update vị trí hạt, giảm dần alpha để biến mất
 function updateParticles() {
-    particles.forEach(p => {
-        // --- THÊM VÀO: Logic kiểm tra ranh giới vụ nổ ---
-        if (p.maxDistance !== undefined) {
-            // Tính khoảng cách hiện tại của hạt so với tâm nổ
-            const distSq = (p.x - p.originX) ** 2 + (p.y - p.originY) ** 2;
+    for (let i = particles.length - 1; i >= 0; i--) {
+        const p = particles[i];
+
+        // Xử lý hạt lốc xoáy của Hố Đen
+        if (p.type === 'blackhole_vortex') {
+            p.orbitRadius -= p.pullSpeed;
+            p.angle += p.orbitSpeed;
+            p.x = p.cx + Math.cos(p.angle) * p.orbitRadius;
+            p.y = p.cy + Math.sin(p.angle) * p.orbitRadius;
+            p.alpha -= 0.015;
+
+            // Xóa hạt khi đã vào tâm hoặc mờ hết
+            if (p.orbitRadius <= 1 || p.alpha <= 0) {
+                particles.splice(i, 1);
+                continue; // Chuyển sang hạt tiếp theo
+            }
+        }
+        else if (p.type === 'fairy_status_effect') {
+            // Nếu mục tiêu còn sống, hạt sẽ bay theo
+            if (p.target && p.target.active) {
+                p.angle += 0.1; // Tốc độ xoay
+                p.x = p.target.x + Math.cos(p.angle) * p.orbitRadius;
+                p.y = p.target.y + Math.sin(p.angle) * p.orbitRadius;
+                p.life--;
+            } else {
+                // Nếu mục tiêu chết, hạt tự hủy nhanh
+                p.life -= 5;
+            }
             
-            // Nếu khoảng cách vượt quá giới hạn, ép hạt tan biến nhanh
-            if (distSq > p.maxDistance ** 2) {
-                p.alpha -= 0.1; // Giảm alpha cực nhanh để tan biến
+            p.alpha = p.life / p.maxLife; // Mờ dần
+            
+            // Xóa hạt khi hết tuổi thọ
+            if (p.life <= 0) {
+                particles.splice(i, 1);
+                continue;
             }
         }
 
-        // Di chuyển và giảm độ mờ (giữ nguyên logic cũ)
-        p.x += p.vx;
-        p.y += p.vy;
+        // Xử lý hạt xoay quanh Cổng Không Gian
+        else if (p.type === 'gate_orbit') {
+            p.angle += p.orbitSpeed;
+            p.x = p.cx + Math.cos(p.angle) * p.orbitRadius;
+            p.y = p.cy + Math.sin(p.angle) * p.orbitRadius;
+            p.life--;
+            p.alpha = p.life / 90; // Giả sử max life là 90
 
-        // Xóa thuộc tính life không cần thiết nếu bạn muốn
-        // if (p.life !== undefined) { ... }
-        
-        if (p.fastFade) {
-            p.alpha -= 0.006;
-        } else {
-            p.alpha -= 0.0006;
+            // Xóa hạt khi hết tuổi thọ
+            if (p.life <= 0) {
+                particles.splice(i, 1);
+                continue; // Chuyển sang hạt tiếp theo
+            }
         }
-    });
-    particles = particles.filter(p => p.alpha > 0);
+        // Xử lý hạt của kỹ năng Hào Quang
+        else if (p.type === 'aura_particle') {
+            p.x += p.vx;
+            p.y += p.vy;
+            p.alpha -= p.alphaDecay;
+        }
+        // Xử lý các loại hạt mặc định khác (ví dụ: từ vụ nổ)
+        else {
+            if (p.maxDistance !== undefined) {
+                const distSq = (p.x - p.originX) ** 2 + (p.y - p.originY) ** 2;
+                if (distSq > p.maxDistance ** 2) {
+                    p.alpha -= 0.1;
+                }
+            }
+            p.x += p.vx;
+            p.y += p.vy;
+            if (p.fastFade) {
+                p.alpha -= 0.006;
+            } else {
+                p.alpha -= 0.0006;
+            }
+        }
+
+        // Dọn dẹp các hạt Hào Quang và hạt mặc định khi chúng mờ hết
+        // (Các hạt vortex và orbit đã có logic xóa riêng ở trên)
+        if (p.alpha <= 0) {
+            // Kiểm tra để tránh lỗi nếu hạt đã bị xóa
+            if (particles[i] === p) {
+                particles.splice(i, 1);
+            }
+        }
+    }
 }
 // Vẽ hạt máu bay về quả cầu
 function drawParticles(ctx) {
     particles.forEach(p => {
         ctx.globalAlpha = p.alpha;
         ctx.fillStyle = p.color;
+
+        // ✨ THÊM 2 DÒNG SAU ĐỂ TẠO HIỆU ỨNG PHÁT SÁNG
+        ctx.shadowColor = 'purple'; // Lấy màu của chính hạt đó
+        ctx.shadowBlur = 8;      // Độ mờ của quầng sáng
+
         ctx.beginPath();
         ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
         ctx.fill();
-        ctx.globalAlpha = 1;
+
+        // Tắt hiệu ứng shadow để không ảnh hưởng các đối tượng khác
+        ctx.shadowBlur = 0; 
     });
+    ctx.globalAlpha = 1;
 }
 function updateDayNight() {
     const now = Date.now();
@@ -4127,7 +4641,97 @@ backgroundBalloons.forEach(balloon => {
         ctx.stroke();
     });
 }
+/**
+ * Vẽ hiệu ứng Hào quang Hỗ trợ dưới chân người chơi
+ */
+function drawSupportAura(ctx) {
+    if (!supportAuraActive) return;
 
+    const centerX = player.x;
+    const centerY = player.y + player.size - 5;
+    const rotationInner = Date.now() / 4000; // Tốc độ xoay của hoa văn bên trong
+    const rotationOuter = -Date.now() / 5000; // Tốc độ xoay ngược chiều của vòng ngoài
+
+    // --- Bắt đầu vẽ vòng tròn bên trong (GIỮ NGUYÊN) ---
+    const radiusXInner = 50;
+    const radiusYInner = 25;
+    
+    ctx.save();
+    ctx.beginPath();
+    ctx.ellipse(centerX, centerY, radiusXInner, radiusYInner, 0, 0, Math.PI * 2);
+    const gradient = ctx.createRadialGradient(centerX, centerY, 0, centerX, centerY, radiusXInner);
+    gradient.addColorStop(0, 'rgba(100, 80, 20, 0.5)');
+    gradient.addColorStop(1, 'rgba(50, 40, 0, 0.4)');
+    ctx.fillStyle = gradient;
+    ctx.fill();
+    ctx.clip(); 
+    
+    ctx.strokeStyle = `rgba(255, 215, 0, 0.7)`;
+    ctx.lineWidth = 1.5;
+    ctx.shadowColor = "gold";
+    ctx.shadowBlur = 10;
+    
+    auraCrackLines.forEach(line => {
+        const r_x1 = line.x1 * Math.cos(rotationInner) - line.y1 * Math.sin(rotationInner);
+        const r_y1 = line.x1 * Math.sin(rotationInner) + line.y1 * Math.cos(rotationInner);
+        const r_x2 = line.x2 * Math.cos(rotationInner) - line.y2 * Math.sin(rotationInner);
+        const r_y2 = line.x2 * Math.sin(rotationInner) + line.y2 * Math.cos(rotationInner);
+        ctx.beginPath();
+        ctx.moveTo(centerX + r_x1, centerY + r_y1 * 0.5);
+        ctx.lineTo(centerX + r_x2, centerY + r_y2 * 0.5);
+        ctx.stroke();
+    });
+    ctx.restore();
+    // --- Kết thúc vẽ vòng tròn bên trong ---
+
+
+    // --- (MỚI) Vẽ vòng tròn bên ngoài có hoa văn và xoay ngược chiều ---
+    const radiusXOuter = 52; // Bán kính vòng ngoài lớn hơn
+    const radiusYOuter = 26;
+
+    ctx.save();
+    // 1. Vẽ viền phát sáng
+    ctx.beginPath();
+    ctx.ellipse(centerX, centerY, radiusXOuter, radiusYOuter, 0, 0, Math.PI * 2);
+    ctx.strokeStyle = `rgba(255, 230, 150, 0.3)`;
+    ctx.lineWidth = 2;
+    ctx.shadowColor = "gold";
+    ctx.shadowBlur = 15;
+    ctx.stroke();
+
+    // 2. Vẽ hoa văn là các chấm nhỏ xoay ngược chiều
+    const numDots = 40;
+    for (let i = 0; i < numDots; i++) {
+        const angle = (Math.PI * 2 / numDots) * i + rotationOuter;
+        const dotRadius = 0.5;
+        const dotX = centerX + Math.cos(angle) * radiusXOuter;
+        const dotY = centerY + Math.sin(angle) * radiusYOuter;
+
+        ctx.beginPath();
+        ctx.arc(dotX, dotY, dotRadius, 0, Math.PI * 2);
+        ctx.fillStyle = 'rgba(255, 230, 150, 0.8)';
+        ctx.fill();
+    }
+    ctx.restore();
+}
+function drawAuraLightBeams(ctx) {
+    if (!supportAuraActive) return;
+
+    ctx.save();
+    auraLightBeams.forEach(beam => {
+        const groundY = player.y + player.size - 5;
+        const height = 100; // Chiều cao của cột sáng
+
+        // Tạo gradient mờ dần về phía trên
+        const gradient = ctx.createLinearGradient(beam.x, groundY, beam.x, groundY - height);
+        gradient.addColorStop(0, `rgba(255, 215, 0, ${beam.alpha * 0.5})`);
+        gradient.addColorStop(1, `rgba(255, 215, 0, 0)`);
+        
+        ctx.fillStyle = gradient;
+        ctx.fillRect(beam.x - beam.width / 2, groundY - height, beam.width, height);
+    });
+    ctx.restore();
+}
 //🎨 9. Vẽ khung hình (draw canvas)
 function draw() {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -4148,7 +4752,10 @@ drawDiagonalStripes(ctx, 0, 0, worldWidth, wallThickness); // Trên
 drawDiagonalStripes(ctx, 0, worldHeight - wallThickness, worldWidth, wallThickness); // Dưới
 drawDiagonalStripes(ctx, 0, 0, wallThickness, worldHeight); // Trái
 drawDiagonalStripes(ctx, worldWidth - wallThickness, 0, wallThickness, worldHeight); // Phải
-if (!player.isDying) {
+// (MỚI) Vẽ Hào quang Hỗ trợ dưới chân
+drawSupportAura(ctx);
+drawAuraLightBeams(ctx);
+if (!player.isDying && player.size > 0.1) {
 // 🎯 Vẽ tên người chơi trên đầu
 ctx.font = "1rem sans-serif";
 ctx.fillStyle = "#00ccff"; // 💙 Màu xanh dương
@@ -4161,17 +4768,32 @@ ctx.shadowBlur = 0; // reset sau khi vẽ
 ctx.shadowColor = "transparent";
 // Vẽ hình tròn player
 if (disguiseActive) {
-  // 🐸 Vẽ ếch thay cho player
-  ctx.save();
-  ctx.font = "2rem serif";
-  ctx.textAlign = "center";
-  ctx.textBaseline = "middle";
-  ctx.shadowColor = "lime";
-  ctx.shadowBlur = 8;
-  ctx.globalAlpha = 0.6;
-  ctx.fillStyle = "white";
-  ctx.fillText("🐸", player.x, player.y);
-  ctx.restore();
+    // --- (MỚI) LOGIC CẢNH BÁO NHẤP NHÁY ---
+    const remainingTime = disguiseEndTime - Date.now();
+    let shouldDraw = true;
+
+    // Nếu thời gian còn lại dưới 2 giây
+    if (remainingTime < 3000 && remainingTime > 0) {
+        // Nhấp nháy mỗi 150 mili giây
+        if (Math.floor(Date.now() / 150) % 2 === 0) {
+            shouldDraw = false;
+        }
+    }
+    
+    // Chỉ vẽ nếu không trong giai đoạn "tắt" của hiệu ứng
+    if (shouldDraw) {
+        // 🐸 Vẽ ếch thay cho player (logic vẽ giữ nguyên)
+        ctx.save();
+        ctx.font = "2rem serif";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.shadowColor = "lime";
+        ctx.shadowBlur = 8;
+        ctx.globalAlpha = 0.6;
+        ctx.fillStyle = "white";
+        ctx.fillText("🐸", player.x, player.y);
+        ctx.restore();
+    }
 } else {
   // 🧍 Vẽ player bình thường
   ctx.beginPath();
@@ -4192,7 +4814,38 @@ if (disguiseActive) {
   ctx.strokeStyle = "rgba(0, 255, 255, 0.4)";
   ctx.shadowColor = "rgba(0, 255, 255, 0.25)";
   ctx.stroke();
+      // ✨✨ DỜI TOÀN BỘ KHỐI VẼ MẮT VÀ MIỆNG VÀO ĐÂY ✨✨
+    if (zombies.length > 0) {
+        const target = zombies.reduce((a, b) => distance(a, player) < distance(b, player) ? a : b);
+        const angle = Math.atan2(target.y - player.y, target.x - player.x);
+        const eyeOffsetX = Math.cos(angle) * (player.size * 0.3); // Điều chỉnh theo size
+        const eyeOffsetY = Math.sin(angle) * (player.size * 0.3);
+        const mouthOffsetX = Math.cos(angle) * (player.size * 0.5);
+        const mouthOffsetY = Math.sin(angle) * (player.size * 0.5);
+
+        // Mắt trái
+        ctx.beginPath();
+        ctx.arc(player.x + eyeOffsetX - (player.size * 0.2), player.y + eyeOffsetY - (player.size * 0.2), 2, 0, Math.PI * 2);
+        ctx.fillStyle = "white";
+        ctx.fill();
+
+        // Mắt phải
+        ctx.beginPath();
+        ctx.arc(player.x + eyeOffsetX + (player.size * 0.2), player.y + eyeOffsetY - (player.size * 0.2), 2, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Miệng
+        ctx.beginPath();
+        ctx.arc(player.x + mouthOffsetX, player.y + mouthOffsetY + (player.size * 0.15), 2, 0, Math.PI);
+        ctx.strokeStyle = "white";
+        ctx.lineWidth = 1;
+        ctx.stroke();
+    }
 }
+if (playerTeleportState.isTeleporting || playerTeleportState.alpha < 1) {
+    ctx.restore();
+}
+
 // 🎭 Vẽ các ảo ảnh phân thân
 clones.forEach((c,i) => {
   ctx.save();
@@ -4230,6 +4883,16 @@ clones.forEach((c,i) => {
   if (!b.active) return; // 🛡 bỏ qua đạn đã bị gỡ
 ctx.save();
 ctx.translate(b.x, b.y);
+    // Nếu là đạn của Fairy, vẽ nó theo kiểu khác
+    if (b.isFairyBullet) {
+        ctx.fillStyle = 'rgba(100, 255, 150, 0.9)'; // Màu xanh lá cây bạc hà
+        ctx.shadowColor = 'lime';
+        ctx.shadowBlur = 8;
+        ctx.beginPath();
+        ctx.arc(0, 0, 5, 0, Math.PI * 2); // Vẽ hình tròn to hơn một chút
+        ctx.fill();
+    } 
+// --- Logic vẽ đạn cũ của player giữ nguyên ---
 if (b.piercing) {
   b.rotation = (b.rotation || 0) + 0.3;
   ctx.rotate(b.rotation);
@@ -5172,33 +5835,7 @@ ctx.fillText(z.iconToDraw, z.x + z.radius * 0.6, z.y - z.radius * 1.2);
     ctx.restore();
 }
 });
-// Mắt và miệng xoay theo hướng zombie gần nhất
-if (zombies.length > 0) {
-  const target = zombies.reduce((a, b) => distance(a, player) < distance(b, player) ? a : b);
-  const angle = Math.atan2(target.y - player.y, target.x - player.x);
-  const eyeOffsetX = Math.cos(angle) * 6;
-  const eyeOffsetY = Math.sin(angle) * 6;
-  const mouthOffsetX = Math.cos(angle) * 10;
-  const mouthOffsetY = Math.sin(angle) * 10;
 
-// Mắt trái
-  ctx.beginPath();
-  ctx.arc(player.x + eyeOffsetX - 4, player.y + eyeOffsetY - 4, 2, 0, Math.PI * 2);
-  ctx.fillStyle = "white";
-  ctx.fill();
-
-// Mắt phải
-  ctx.beginPath();
-  ctx.arc(player.x + eyeOffsetX + 4, player.y + eyeOffsetY - 4, 2, 0, Math.PI * 2);
-  ctx.fill();
-
-// Miệng
-  ctx.beginPath();
-  ctx.arc(player.x + mouthOffsetX, player.y + mouthOffsetY + 3, 2, 0, Math.PI);
-  ctx.strokeStyle = "white";
-  ctx.lineWidth = 1;
-  ctx.stroke();
-}
 // Vẽ lớp khiên nếu đang hoạt động
 function drawHex3D(ctx, x, y, size) {
   const gradient = ctx.createRadialGradient(x, y, size * 0.3, x, y, size);
@@ -5602,6 +6239,68 @@ if (petRabbit && petActive) {
   ctx.shadowBlur   = 0;
   ctx.shadowColor  = "transparent";
 }
+
+// ================== VẼ CỔNG KHÔNG GIAN ==================
+if (spaceGateActive && spaceGate && spaceGate.radius > 0.1) { // Sử dụng radius > 0.1
+    ctx.save();
+    // Áp dụng hiệu ứng mờ dần khi cổng mới xuất hiện
+    ctx.globalAlpha = spaceGate.alpha;
+
+    const x = spaceGate.x;
+    const y = spaceGate.y;
+    const radius = spaceGate.radius;
+
+    // Lớp hào quang bên ngoài
+// Lớp hào quang bên ngoài
+const pulse = Math.sin(frame * 0.1) * 5;
+ctx.beginPath();
+// ✨ SỬA LỖI: Dùng Math.max để đảm bảo bán kính không bao giờ âm
+ctx.arc(x, y, Math.max(0, radius + pulse), 0, Math.PI * 2); 
+ctx.fillStyle = `rgba(255, 100, 0, 0.2)`;
+ctx.fill();
+
+    // Vòng xoáy lửa trung tâm
+    const gradient = ctx.createRadialGradient(x, y, 0, x, y, radius);
+    gradient.addColorStop(0, 'rgba(255, 255, 180, 0.9)');
+    gradient.addColorStop(0.5, 'rgba(255, 180, 0, 0.8)');
+    gradient.addColorStop(1, 'rgba(200, 50, 0, 0.5)');
+    
+    ctx.beginPath();
+    ctx.arc(x, y, radius, 0, Math.PI * 2);
+    ctx.fillStyle = gradient;
+    ctx.fill();
+
+    // Viền ngoài phát sáng
+    ctx.beginPath();
+    ctx.arc(x, y, radius, 0, Math.PI * 2);
+    ctx.strokeStyle = "gold";
+    ctx.lineWidth = 3;
+    ctx.shadowColor = "orange";
+    ctx.shadowBlur = 25;
+    ctx.stroke();
+
+    // Các tia lửa xoáy bên trong
+    ctx.strokeStyle = "rgba(255, 255, 255, 0.6)";
+    ctx.lineWidth = 1.5;
+    ctx.shadowColor = "yellow";
+    ctx.shadowBlur = 15;
+    for (let i = 0; i < 4; i++) {
+        ctx.beginPath();
+        const startAngle = spaceGate.rotation + (i * Math.PI / 2);
+        const endAngle = startAngle + Math.PI * 0.8;
+        ctx.arc(x, y, radius * (0.3 + (i * 0.15)), startAngle, endAngle);
+        ctx.stroke();
+    }
+    
+    ctx.restore();
+}
+
+// Đoạn này xử lý việc làm mờ người chơi khi dịch chuyển, giữ nguyên
+if (playerTeleportState.isTeleporting || playerTeleportState.alpha < 1) {
+    ctx.save();
+    ctx.globalAlpha = playerTeleportState.alpha;
+}
+
 drawParticles(ctx);
 
 drawBloodOrb(ctx);
@@ -5631,6 +6330,19 @@ function drawEffects() {
         ctx.fillText("☁️", drawX, drawY);
         ctx.restore();
     });
+    // ✨ Thêm vòng lặp này vào để vẽ các Fairy
+    fairies.forEach(fairy => {
+        ctx.save();
+        ctx.font = "1.2rem serif";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.shadowColor = "cyan";
+        ctx.shadowBlur = 15;
+        ctx.fillStyle = 'white'; 
+        ctx.fillText("🦋", fairy.x, fairy.y);
+        ctx.restore();
+    });
+    
   fireballs.forEach(f => {
     ctx.save();
     ctx.translate(f.x, f.y);
@@ -5780,7 +6492,7 @@ missiles = missiles.filter(m => {
         });
         
         // YÊU CẦU 2: Tái sử dụng hàm nổ để tạo hiệu ứng
-        createParticleExplosion(m.x, m.y, 50); // Tạo 50 hạt màu cam
+        createParticleExplosion(m.x, m.y, 50, 'fire'); // Tạo 50 hạt màu cam
         
         return false; // Xóa tên lửa sau khi nổ
     }
@@ -5908,6 +6620,29 @@ blackHoles.forEach(h => {
   ctx.fillText("🕳️", h.x, h.y);
   ctx.restore();
 });
+// Vẽ lazer cho clone
+activeCloneLasers.forEach(laser => {
+    // Tìm clone đã bắn ra tia lazer này bằng ID
+    const firingClone = clones.find(c => c.id === laser.cloneId);
+
+    // Chỉ vẽ tia lazer nếu clone đó còn tồn tại
+    if (firingClone) {
+        ctx.save();
+        ctx.beginPath();
+        // Điểm bắt đầu của lazer là vị trí HIỆN TẠI của clone
+        ctx.moveTo(firingClone.x, firingClone.y);
+        ctx.lineTo(laser.endX, laser.endY);
+        
+        ctx.strokeStyle = `rgba(255, 100, 255, ${laser.life / 120})`;
+        ctx.lineWidth = 6;
+        ctx.shadowColor = "#ff00ff";
+        ctx.shadowBlur = 20;
+        
+        ctx.stroke();
+        ctx.restore();
+    }
+
+  });
 }
 
 //🔁 10. Vòng lặp chính và khởi tạo game
@@ -6260,7 +6995,42 @@ if (player.speed < MAX_MOVE_SPEED) {
     }
   });
 }
+// --- Nâng cấp kỹ năng Fairy ---
+if (skillUpgrades.fairyCount < 3) {
+    allUpgrades.push({
+        name: `🦋 +1 Fairy (Tối đa 3)`,
+        tier: "Kim",
+        effect: () => {
+            skillUpgrades.fairyCount++;
+            showWarning(`🦋 Số lượng Fairy: ${skillUpgrades.fairyCount}`);
+        }
+    });
+} else {
+    // Khi đã đủ 3 Fairy, bắt đầu nâng cấp chỉ số
+    // Nâng cấp hồi máu
+    const healTier = randomTier();
+    const healValue = { Bạc: 1, Vàng: 2, Kim: 3 }[healTier];
+    allUpgrades.push({
+        name: `🦋 +${healValue} Hồi máu/giây`,
+        tier: healTier,
+        effect: () => {
+            skillUpgrades.fairyHealLevel += healValue;
+            showWarning(`🦋 Nâng cấp hồi máu!`);
+        }
+    });
 
+    // Nâng cấp sát thương
+    const dmgTier = randomTier();
+    const dmgValue = { Bạc: 1, Vàng: 2, Kim: 3 }[dmgTier];
+    allUpgrades.push({
+        name: `🦋 +${dmgValue} Sát thương`,
+        tier: dmgTier,
+        effect: () => {
+            skillUpgrades.fairyDamageLevel += dmgValue;
+            showWarning(`🦋 Nâng cấp sát thương!`);
+        }
+    });
+}
 
 // 🎲 Xáo trộn và chọn ngẫu nhiên 3 nâng cấp
 const choices = allUpgrades.sort(() => Math.random() - 0.5).slice(0, 3);
@@ -6446,22 +7216,22 @@ const skillsData = [
     icon: "🛰️",
     manaCost: 15,
     duration: 30000,
-    baseDamage: 5,
+    baseDamage: 3,
     description: "Triệu hồi vệ tinh xoay quanh người chơi và bắn laze xuyên zombie."
   },
 {
   name: "Tên lửa F18",
   icon: "🚀",
-  manaCost: 15,
+  manaCost: 18,
   duration: 30000,
   baseDamage: 6,
-  description: "Gọi 2 tên lửa bay vòng tròn quanh người chơi và xuyên phá zombie.",
+  description: "Gọi 1~5 tên lửa bay vòng tròn quanh người chơi và xuyên phá zombie.",
   upgrades: []
 },
 {
   name: "UFO tấn công",
   icon: "🛸",
-  manaCost: 15,
+  manaCost: 16,
   duration: 30000,
   baseDamage: 5,
   description: "Gọi UFO bay ngang màn hình, bắn laze đỏ xuống zombie mỗi giây.",
@@ -6479,15 +7249,15 @@ const skillsData = [
 {
   name: "Bom B52",
   icon: "💣",
-  manaCost: 25,
+  manaCost: 52,
   duration: 52000,
   baseDamage: 10,
-  description: "Mỗi giây rơi 1 bom, phát nổ sau 1-3 giây hoặc khi chạm zombie."
+  description: "Máy bay mang theo Bom B52 thả hàng loạt tiêu diệt zombie."
 },
   {
     name: "Ảo ảnh phân thân",
     icon: "🎭",
-    manaCost: 30,
+    manaCost: 12,
     duration: 45000,
     baseDamage: 5,
     description: "Triệu hồi 2 bản sao hỗ trợ bắn."
@@ -6495,7 +7265,7 @@ const skillsData = [
   {
     name: "Hố đen",
     icon: "🕳️",
-    manaCost: 30,
+    manaCost: 35,
     duration: 30000,
     baseDamage: 7,
     description: "Tạo một hố đen hút zombie xung quanh."
@@ -6504,8 +7274,8 @@ const skillsData = [
     name: "Biến hình",
     icon: "🐸",
     manaCost: 5,
-    duration: 6000,
-    description: "Giả dạng thành ếch, zombie sẽ bỏ đi không tấn công trong 5s."
+    duration: 10000,
+    description: "Giả dạng thành ếch đồng  thời tăng tốc chạy, zombie sẽ bỏ đi không tấn công trong 5s."
   },
   {
     name: "Boom hạt nhân",
@@ -6524,12 +7294,13 @@ const skillsData = [
     description: "Triệu hồi quả cầu đỏ bay quanh người chơi.\nMỗi giây hút máu zombie gần nhất, gây sát thương và hồi 1 HP.",
     upgrades: []
 },
-  {
-    name: "Kỹ năng B",
-    icon: "🅱️",
-    manaCost: 0,
-    duration: 0,
-    description: "Kỹ năng thử nghiệm B"
+{
+    name: "Cổng Không Gian",
+    icon: "🌀",
+    manaCost: 50,
+    duration: 30000,
+    baseDamage: 2,
+    description: "Mở một cổng dịch chuyển trong 30 giây. Bước vào cổng sẽ đưa bạn đến một vị trí ngẫu nhiên an toàn trên bản đồ."
   },
 ];
 /* đặt sau khai báo skillsData */
@@ -6770,6 +7541,7 @@ function activateSkill(skill) {
     case "Biến hình": activateDisguise(skill); break;
     case "Boom hạt nhân": activateNuclearBomb(skill); break;
     case 'Quả cầu hấp huyết':activateBloodOrb(skill); break;
+    case "Cổng Không Gian": activateSpaceGate(skill); break;
   }
 // Làm sáng nút kỹ năng tương ứng và đếm ngược
 const list = document.getElementById('skills-list').children;
@@ -7097,42 +7869,39 @@ function activateClones(skill) {
       moveAngle: moveAngle,
       moveSpeed: 1.2,                     // Tốc độ di chuyển clone
       baseDamage: skill.baseDamage || 5, // Sát thương riêng
-      lastShot: 0
+      lastShot: 0,
+      id: Date.now() + i, // Tạo 1 ID tia lazer
+      shotCount: 0
     });
   }
 }
 // 🕳️ Hố đen: Hút zombie vào tâm và gây sát thương liên tục
 function activateBlackHole(skill) {
-  // Xác định số lượng hố đen dựa trên cấp kỹ năng (tối đa 2)
-  const holeCount = Math.min(skill.level || 2, 2); // Tối đa 2 hố đen
+  const holeCount = Math.min(skill.level || 2, 2);
   
-  // Bán kính hiệu ứng của hố đen
-  const radius = 150; 
+  // ✨ THAY ĐỔI: Tách biệt kích thước và phạm vi hút
+  const VISUAL_RADIUS = 150;  // Kích thước hố đen sẽ được vẽ trên màn hình
+  const PULL_RADIUS = 200; // Phạm vi hút zombie xung quanh
 
-  // Chọn một góc ngẫu nhiên ban đầu để đặt hố đen đầu tiên
   const firstAngle = Math.random() * Math.PI * 2;
 
   for (let i = 0; i < holeCount; i++) {
-    // Hố đen thứ hai (nếu có) sẽ được đặt ở phía đối diện player
     const angle = firstAngle + (i * Math.PI);
-    
-    // Khoảng cách ngẫu nhiên từ người chơi (từ 80 đến 160 pixels)
     const distance = 80 + Math.random() * 80;
 
-    // Tính toán tọa độ cuối cùng, đảm bảo hố đen luôn gần player
     const x = player.x + Math.cos(angle) * distance;
     const y = player.y + Math.sin(angle) * distance;
 
-    // Thêm hố đen vào game
     blackHoles.push({
       x: x,
       y: y,
-      radius: radius,
+      radius: VISUAL_RADIUS,     // Gán kích thước VẼ
+      pullRadius: PULL_RADIUS,   // ✨ THÊM MỚI: Gán phạm vi HÚT
       damage: skill.baseDamage,
       pullSpeed: 3.5,
       tick: 0,
       endTime: Date.now() + skill.duration,
-      dx: (Math.random() - 0.5) * 0.1, // Di chuyển ngẫu nhiên nhẹ
+      dx: (Math.random() - 0.5) * 0.1,
       dy: (Math.random() - 0.5) * 0.1
     });
   }
@@ -7143,7 +7912,10 @@ function activateDisguise(skill) {
   disguiseActive = true;
   disguiseEndTime = Date.now() + skill.duration;
 
-  // Cập nhật trạng thái cho zombie
+  // (MỚI) Buff tạm thời khi kích hoạt
+  player.hearts += 20;
+  showWarning("🐸 Biến hình! +20 HP & Tăng tốc!");
+
   zombies.forEach(z => {
     if (!z.isBoss) {
       z.state = "wandering";
@@ -7158,9 +7930,31 @@ function activateDisguise(skill) {
       }
     }
   });
-  setTimeout(() => {
+// Khi hết thời gian
+setTimeout(() => {
     disguiseActive = false;
-  }, skill.duration);
+    player.hearts = Math.max(1, player.hearts - 20);
+    showWarning("🐸 Hết biến hình!");
+
+    // --- LOGIC BOM KHÓI ---
+    // 1. Tạo hiệu ứng khói hình ảnh
+    createParticleExplosion(player.x, player.y, 70, 'smoke');
+
+    // 2. Đẩy lùi và làm choáng zombie ở gần
+    const pushRadius = 150;
+    const pushForce = 30;
+
+    zombies.forEach(z => {
+        if (z.active && distance(player, z) < pushRadius) {
+            const angle = Math.atan2(z.y - player.y, z.x - player.x);
+            z.x += Math.cos(angle) * pushForce;
+            z.y += Math.sin(angle) * pushForce;
+            z.state = "wandering"; // Buộc zombie đi lang thang
+        }
+    });
+
+}, skill.duration);
+
 }
 // Màu cho bom hạt nhân khi phát nổ
 const colors = [
@@ -7299,6 +8093,109 @@ function activateBloodOrb(skill) {
         x: player.x,
         y: player.y
     }));
+}
+// ================== CỔNG KHÔNG GIAN ==================
+
+// Hàm tìm một vị trí an toàn để dịch chuyển đến
+function findSafeTeleportLocation() {
+    let bestLocation = null;
+    let lowestZombieCount = Infinity;
+    const MAX_ATTEMPTS = 20; // Thử tìm 20 lần và chọn điểm tốt nhất
+
+    const bosses = zombies.filter(z => z.isBoss || z.isBigBoss);
+
+    for (let i = 0; i < MAX_ATTEMPTS; i++) {
+        // Tạo vị trí ngẫu nhiên trong bản đồ, trừ đi vùng rìa
+        const padding = 100;
+        const x = Math.random() * (worldWidth - padding * 2) + padding;
+        const y = Math.random() * (worldHeight - padding * 2) + padding;
+        
+        let isValid = true;
+
+        // 1. Kiểm tra khoảng cách với Boss
+        for (const boss of bosses) {
+            if (distance({x, y}, boss) < 500) {
+                isValid = false;
+                break;
+            }
+        }
+        if (!isValid) continue; // Bỏ qua vị trí này nếu quá gần boss
+
+        // 2. Đếm số lượng zombie xung quanh
+        let nearbyZombies = 0;
+        for (const z of zombies) {
+            if (distance({x, y}, z) < 300) {
+                nearbyZombies++;
+            }
+        }
+
+        // 3. Chọn vị trí có ít zombie nhất
+        if (nearbyZombies < lowestZombieCount) {
+            lowestZombieCount = nearbyZombies;
+            bestLocation = { x, y };
+        }
+    }
+
+    // Nếu không tìm được vị trí nào, trả về một vị trí ngẫu nhiên xa người chơi
+    if (!bestLocation) {
+        return {
+            x: Math.random() * worldWidth,
+            y: Math.random() * worldHeight
+        };
+    }
+    
+    return bestLocation;
+}
+
+// Hàm tạo một cổng mới
+function createNewGate(x, y) {
+    const safeX = Math.max(wallThickness + 60, Math.min(worldWidth - wallThickness - 60, x));
+    const safeY = Math.max(wallThickness + 60, Math.min(worldHeight - wallThickness - 60, y));
+    const initialRadius = 40; // Bán kính ban đầu
+    spaceGate = {
+        x: safeX,
+        y: safeY,
+        radius: initialRadius,
+        originalRadius: initialRadius, // ✨ THÊM DÒNG NÀY: Lưu lại bán kính gốc
+        damage: 2,
+        rotation: 0,
+        alpha: 0 // Vẫn giữ alpha để cổng mới hiện ra mượt mà
+    };
+}
+
+// Hàm kích hoạt chính
+function activateSpaceGate(skill) {
+  // Nếu đã có cổng rồi thì không tạo nữa
+  if (spaceGateActive) return;
+
+  spaceGateActive = true;
+  spaceGateEndTime = Date.now() + skill.duration;
+
+  // Tạo cổng ngay trước mặt người chơi một khoảng
+  // Xác định hướng dựa trên phím đang nhấn, hoặc ngẫu nhiên nếu đứng yên
+  const angle = (keys.a || keys.d || keys.w || keys.s) 
+                ? Math.atan2((keys.s ? 1 : 0) - (keys.w ? 1 : 0), (keys.d ? 1 : 0) - (keys.a ? 1 : 0))
+                : (zombies.length > 0 ? Math.atan2(zombies[0].y - player.y, zombies[0].x - player.x) : 0);
+  const distance = 150;
+
+  createNewGate(player.x + Math.cos(angle) * distance, player.y + Math.sin(angle) * distance, skill.baseDamage);
+}
+
+// Hàm tạo cổng mới (thay thế hàm cũ)
+function createNewGate(x, y, damage) {
+    // Giới hạn vị trí cổng không bị tạo ra ngoài bản đồ
+    const safeX = Math.max(wallThickness + 60, Math.min(worldWidth - wallThickness - 60, x));
+    const safeY = Math.max(wallThickness + 60, Math.min(worldHeight - wallThickness - 60, y));
+
+    spaceGate = {
+        x: safeX,
+        y: safeY,
+        radius: 50,       // Bán kính hiệu ứng của cổng
+        damage: damage,   // Sát thương cơ bản
+        rotation: 0,
+        alpha: 0,         // Độ mờ ban đầu (để làm hiệu ứng hiện ra)
+        particles: []     // Mảng chứa các hạt lửa trang trí
+    };
 }
 // 📌 Bật/tắt bảng kỹ năng bằng phím X
 document.addEventListener('keydown', (e) => {
