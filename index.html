@@ -2035,38 +2035,35 @@ const zombieColorsByLevel = [
  * @returns {number} Cấp độ zombie (dưới dạng index 0, 1, 2...)
  */
 function getZombieLevelByWave(wave) {
-    // --- 1. CẤU HÌNH ĐỘ KHÓ ---
-    // Bạn có thể dễ dàng thay đổi các thông số này để cân bằng game
-    const MAX_ZOMBIE_LEVEL = 9; // Cấp tối đa của zombie (0-9 tương ứng với 1-10)
-    const LEVEL_RANGE = 4;      // Trong một wave, sẽ có khoảng 4 cấp độ zombie khác nhau có thể xuất hiện
-    
-    // --- 2. TÍNH TOÁN CẤP ĐỘ CƠ BẢN CHO WAVE ---
-    // Sử dụng hàm căn bậc hai để độ khó tăng nhanh ở đầu và chậm dần về sau
-    // Bạn có thể thay 1.8 bằng số khác để điều chỉnh tốc độ tăng độ khó
-    const baseLevel = Math.floor(Math.sqrt(wave - 1) * 1.8);
+    const MAX_ZOMBIE_LEVEL = 9;
+    const LEVEL_RANGE = 4;
 
-    // --- 3. XÁC ĐỊNH "CỬA SỔ" CÁC LOẠI ZOMBIE CÓ THỂ XUẤT HIỆN ---
-    // Ví dụ: wave 10, baseLevel=5 -> min=2, max=6. Zombie cấp 2-6 có thể xuất hiện
+    // ⚠️ ƯU TIÊN CÂN BẰNG CHO WAVE 1 & 2
+    if (wave === 1) return 0; // Luôn ra zombie cấp thấp nhất
+    if (wave === 2) {
+        const r = Math.random();
+        if (r < 0.7) return 0;
+        if (r < 0.95) return 1;
+        return 2;
+    }
+
+    // --- PHẦN GỐC GIỮ NGUYÊN CHO WAVE >= 3 ---
+    const baseLevel = Math.floor(Math.sqrt(wave - 1) * 1.8);
     const minLevel = Math.max(0, baseLevel - (LEVEL_RANGE / 2));
     let maxLevel = Math.min(MAX_ZOMBIE_LEVEL, baseLevel + (LEVEL_RANGE / 2));
 
-    // Đảm bảo luôn có ít nhất 2 cấp độ zombie có thể xuất hiện
     if (maxLevel - minLevel < 2) {
         maxLevel = Math.min(MAX_ZOMBIE_LEVEL, minLevel + 2);
     }
-    
-    // --- 4. TẠO TỶ LỆ NGẪU NHIÊN DỰA TRÊN ĐỘ KHÓ ---
-    // Zombie cấp cao hơn sẽ có tỷ lệ xuất hiện cao hơn trong "cửa sổ"
+
     const weights = [];
     let totalWeight = 0;
     for (let i = minLevel; i <= maxLevel; i++) {
-        // Trọng số tăng dần, zombie cấp cao hơn sẽ có "vé" nhiều hơn
         const weight = (i - minLevel + 1);
         weights.push({ level: i, weight: weight });
         totalWeight += weight;
     }
 
-    // --- 5. CHỌN NGẪU NHIÊN MỘT CẤP ĐỘ DỰA TRÊN TỶ LỆ ---
     const rand = Math.random() * totalWeight;
     let weightSum = 0;
     for (const item of weights) {
@@ -2076,7 +2073,6 @@ function getZombieLevelByWave(wave) {
         }
     }
 
-    // Fallback, trả về cấp độ cao nhất có thể
     return maxLevel;
 }
 // Khởi tạo Zombie
