@@ -7180,347 +7180,370 @@ function showUpgradePopup() {
   const container = document.getElementById("upgradeChoices");
   container.innerHTML = "";
 
-// 📌 Bảng giá trị tương ứng với từng bậc nâng cấp
-const UPGRADE_VALUES = {
-  Bạc:  { fireRate: 1, damageBoost: 0.5, hpBoost: 5, bulletSpeed: 0.25 },
-  Vàng: { fireRate: 2,  damageBoost: 1,   hpBoost: 10, bulletSpeed: 0.5 },
-  Kim:  { fireRate: 3,    damageBoost: 1.5, hpBoost: 15, bulletSpeed: 1 },
-  Rare: { moveSpeed: 0.2 } // 👟 tốc độ chạy – bậc hiếm
-};
-// 🎖 Màu viền tương ứng từng bậc
-const TIER_COLORS = {
-  Bạc: "#aaa",
-  Vàng: "gold",
-  Kim: "#c770ff",
-  Rare: "#3399ff" // 💚 màu xanh bậc hiếm
-};
-// Giới hạn nâng cấp kỹ năng
-const MAX_FIRE_RATE = 21; // 🔫 hướng bắn
-const MAX_LINE_BULLETS = 10; // 🔫 số lượng đạn
-const MAX_MOVE_SPEED = 3; // 👟 tốc độ di chuyển tối đa
-const MAX_BULLET_SPEED = 10; // 🚀 tốc độ đạn tối đa
+  // 📌 Bảng giá trị tương ứng với từng bậc nâng cấp
+  const UPGRADE_VALUES = {
+    Bạc: { fireRate: 1, damageBoost: 0.5, hpBoost: 5, bulletSpeed: 0.25 },
+    Vàng: { fireRate: 2, damageBoost: 1, hpBoost: 10, bulletSpeed: 0.5 },
+    Kim: { fireRate: 3, damageBoost: 1.5, hpBoost: 15, bulletSpeed: 1 },
+    Rare: { moveSpeed: 0.2 } // 👟 tốc độ chạy – bậc hiếm
+  };
+  // 🎖 Màu viền tương ứng từng bậc
+  const TIER_COLORS = {
+    Bạc: "#aaa",
+    Vàng: "gold",
+    Kim: "#c770ff",
+    Rare: "#3399ff" // 💚 màu xanh bậc hiếm
+  };
+  // Giới hạn nâng cấp kỹ năng
+  const MAX_FIRE_RATE = 21; // 🔫 hướng bắn
+  const MAX_LINE_BULLETS = 10; // 🔫 số lượng đạn
+  const MAX_MOVE_SPEED = 3; // 👟 tốc độ di chuyển tối đa
+  const MAX_BULLET_SPEED = 10; // 🚀 tốc độ đạn tối đa
 
-const allUpgrades = [];
+  const allUpgrades = [];
 
-// 🔪 Đao – tăng số lượng (tối đa 20), sau đó tăng sát thương
-if (skillUpgrades.bladeCount < 20) {
-  const tier = randomTier();
-  const value = { Bạc: 1, Vàng: 2, Kim: 3 }[tier];
-  allUpgrades.push({
-  name: `🔪 +${value} đao xoay`,
-  tier,
-  effect: () => {
-skillUpgrades.bladeCount = Math.min(skillUpgrades.bladeCount + value, 20);
-  showWarning(`🔪 +${value} đao`);
-  updateStatsOverlay();
-}
-});
-} else {
-  const tier = randomTier();
-  const value = { Bạc: 0.5, Vàng: 1, Kim: 1.5 }[tier];
-allUpgrades.push({
-  name: `🔪 +${value} sát thương đao`,
-  tier,
-  effect: () => {
-skillUpgrades.bladeDamage += value;
-  showWarning(`🔪 +${value} dmg`);
-  updateStatsOverlay();
-}
-});
-}
-
-// ⚔️ Kiếm – tăng cấp (tối đa 10), sau đó tăng sát thương
-if (skillUpgrades.swordLevel < 10) {
-  const tier = randomTier();
-  const value = { Bạc: 1, Vàng: 2, Kim: 3 }[tier];
-  allUpgrades.push({
-    name: `⚔️ +${value} cấp mưa kiếm`,
-    tier,
-    effect: () => {
-skillUpgrades.swordLevel = Math.min(skillUpgrades.swordLevel + value, 10);
-      showWarning(`⚔️ +${value} cấp kiếm`);
-      updateStatsOverlay();
-}
-});
-} else {
-  const tier = randomTier();
-  const value = { Bạc: 0.5, Vàng: 1, Kim: 1.5 }[tier];
-  allUpgrades.push({
-    name: `⚔️ +${value} sát thương kiếm`,
-    tier,
-    effect: () => {
-    skillUpgrades.swordDamage += value;
-    showWarning(`⚔️ +${value} dmg`);
-    updateStatsOverlay();
-}
-});
-}
-
-// 🔥 Lửa – tăng số lượng (tối đa 10), sau đó tăng sát thương
-if (skillUpgrades.fireCount < 10) {
-  const tier = randomTier();
-  const value = { Bạc: 1, Vàng: 2, Kim: 3 }[tier];
-  allUpgrades.push({
-    name: `🔥 +${value} cầu lửa`,
-    tier,
-    effect: () => {
-    skillUpgrades.fireCount = Math.min(skillUpgrades.fireCount + value, 10);
-    showWarning(`🔥 +${value} lửa`);
-    updateStatsOverlay();
-}
-});
-} else {
-  const tier = randomTier();
-  const value = { Bạc: 0.5, Vàng: 1, Kim: 1.5 }[tier];
-  allUpgrades.push({
-    name: `🔥 +${value} sát thương lửa`,
-    tier,
-    effect: () => {
-    skillUpgrades.fireDamage += value;
-    showWarning(`🔥 +${value} dmg`);
-    updateStatsOverlay();
-}
-});
-}
-
-// ❄️ Băng – tăng số lượng (tối đa 10), sau đó tăng sát thương
-if (skillUpgrades.iceCount < 10) {
-  const tier = randomTier();
-  const value = { Bạc: 1, Vàng: 2, Kim: 3 }[tier];
-  allUpgrades.push({
-    name: `❄️ +${value} cầu băng`,
-    tier,
-    effect: () => {
-    skillUpgrades.iceCount = Math.min(skillUpgrades.iceCount + value, 10);
-    showWarning(`❄️ +${value} băng`);
-    updateStatsOverlay();
-}
-});
-} else {
-  const tier = randomTier();
-  const value = { Bạc: 0.5, Vàng: 1, Kim: 1.5 }[tier];
-  allUpgrades.push({
-    name: `❄️ +${value} sát thương băng`,
-    tier,
-    effect: () => {
-    skillUpgrades.iceDamage += value;
-    showWarning(`❄️ +${value} dmg`);
-    updateStatsOverlay();
-}
-});
-}
-// 🔵 Lôi – tăng số lượng (tối đa 6), sau đó tăng sát thương
-if (skillUpgrades.thunderCount < 6) {
-  const tier = randomTier();
-  const value = 1;
-  allUpgrades.push({
-    name: `🔵 +${value} cầu lôi`,
-    tier,
-    effect: () => {
-      skillUpgrades.thunderCount = Math.min(skillUpgrades.thunderCount + value, 6);
-      showWarning(`🔵 +${value} cầu lôi`);
-      updateStatsOverlay();
+  // 🔪 Đao – tăng số lượng (tối đa 20), sau đó tăng sát thương
+  // THÊM ĐIỀU KIỆN: Chỉ hiển thị nâng cấp khi người chơi đạt level 1
+  if (player.level >= 1) {
+    if (skillUpgrades.bladeCount < 20) {
+      const tier = randomTier();
+      const value = { Bạc: 1, Vàng: 2, Kim: 3 }[tier];
+      allUpgrades.push({
+        name: `🔪 +${value} đao xoay`,
+        tier,
+        effect: () => {
+          skillUpgrades.bladeCount = Math.min(skillUpgrades.bladeCount + value, 20);
+          showWarning(`🔪 +${value} đao`);
+          updateStatsOverlay();
+        }
+      });
+    } else {
+      const tier = randomTier();
+      const value = { Bạc: 0.5, Vàng: 1, Kim: 1.5 }[tier];
+      allUpgrades.push({
+        name: `🔪 +${value} sát thương đao`,
+        tier,
+        effect: () => {
+          skillUpgrades.bladeDamage += value;
+          showWarning(`🔪 +${value} dmg`);
+          updateStatsOverlay();
+        }
+      });
     }
-  });
-} else {
-  const tier = randomTier();
-  const value = { Bạc: 1, Vàng: 2, Kim: 3 }[tier];
-  allUpgrades.push({
-    name: `🔵 +${value} sát thương lôi`,
-    tier,
-    effect: () => {
-      skillUpgrades.thunderDamage += value;
-      showWarning(`🔵 +${value} dmg lôi`);
-      updateStatsOverlay();
+  }
+
+  // ⚔️ Kiếm – tăng cấp (tối đa 10), sau đó tăng sát thương
+  // THÊM ĐIỀU KIỆN: Chỉ hiển thị nâng cấp khi người chơi đạt level 2
+  if (player.level >= 2) {
+    if (skillUpgrades.swordLevel < 10) {
+      const tier = randomTier();
+      const value = { Bạc: 1, Vàng: 2, Kim: 3 }[tier];
+      allUpgrades.push({
+        name: `⚔️ +${value} cấp mưa kiếm`,
+        tier,
+        effect: () => {
+          skillUpgrades.swordLevel = Math.min(skillUpgrades.swordLevel + value, 10);
+          showWarning(`⚔️ +${value} cấp kiếm`);
+          updateStatsOverlay();
+        }
+      });
+    } else {
+      const tier = randomTier();
+      const value = { Bạc: 0.5, Vàng: 1, Kim: 1.5 }[tier];
+      allUpgrades.push({
+        name: `⚔️ +${value} sát thương kiếm`,
+        tier,
+        effect: () => {
+          skillUpgrades.swordDamage += value;
+          showWarning(`⚔️ +${value} dmg`);
+          updateStatsOverlay();
+        }
+      });
     }
-  });
-}
+  }
 
-// 🔫 Hướng bắn – nếu chưa max
-if (playerUpgrades.fireRate < MAX_FIRE_RATE) {
-  const tier = randomTier();
-  const value = UPGRADE_VALUES[tier].fireRate;
-  allUpgrades.push({
-    name: "🔫 Hướng bắn",
-    key: "fireRate",
-    tier,
-    value,
-effect: () => {
-  const added = Math.min(playerUpgrades.fireRate + value, MAX_FIRE_RATE) - playerUpgrades.fireRate;
-  playerUpgrades.fireRate += added;
-  showWarning(`🔫 +${added} hướng bắn`);
-  updateStatsOverlay();
-}
-});
-}
-
-// 💥 Sát thương – luôn có thể nâng
-{
-  const tier = randomTier();
-  const value = UPGRADE_VALUES[tier].damageBoost;
-  allUpgrades.push({
-    name: "💥 Sát thương",
-    key: "damageBoost",
-    tier,
-    value,
-effect: () => {
-  playerUpgrades.damageBoost += value;
-  showWarning(`💥 +${value} sát thương`);
-  updateStatsOverlay();
-}
-});
-}
-
-// ❤️ Máu – luôn có thể nâng
-{
-  const tier = randomTier();
-  const value = UPGRADE_VALUES[tier].hpBoost;
-  allUpgrades.push({
-    name: "❤️ Tăng máu",
-    key: "hpBoost",
-    tier,
-    value,
-    effect: () => {
-      player.hearts += value;
-      playerUpgrades.hpBoost += 1;
-      showWarning(`❤️ +${value}`);
-      updateUI();
-      updateStatsOverlay();
+  // 🔥 Lửa – tăng số lượng (tối đa 10), sau đó tăng sát thương
+  // THÊM ĐIỀU KIỆN: Chỉ hiển thị nâng cấp khi người chơi đạt level 3
+  if (player.level >= 3) {
+    if (skillUpgrades.fireCount < 10) {
+      const tier = randomTier();
+      const value = { Bạc: 1, Vàng: 2, Kim: 3 }[tier];
+      allUpgrades.push({
+        name: `🔥 +${value} cầu lửa`,
+        tier,
+        effect: () => {
+          skillUpgrades.fireCount = Math.min(skillUpgrades.fireCount + value, 10);
+          showWarning(`🔥 +${value} lửa`);
+          updateStatsOverlay();
+        }
+      });
+    } else {
+      const tier = randomTier();
+      const value = { Bạc: 0.5, Vàng: 1, Kim: 1.5 }[tier];
+      allUpgrades.push({
+        name: `🔥 +${value} sát thương lửa`,
+        tier,
+        effect: () => {
+          skillUpgrades.fireDamage += value;
+          showWarning(`🔥 +${value} dmg`);
+          updateStatsOverlay();
+        }
+      });
     }
-  });
-}
+  }
 
-// 💨 Tốc độ đạn tối đa 10
-if (playerUpgrades.bulletSpeed < MAX_BULLET_SPEED) {
-  const tier = randomTier();
-  const value = UPGRADE_VALUES[tier].bulletSpeed;
-  allUpgrades.push({
-    name: "💨 Tốc độ đạn",
-    key: "bulletSpeed",
-    tier,
-    value,
-    effect: () => {
-      const added = Math.min(playerUpgrades.bulletSpeed + value, MAX_BULLET_SPEED) - playerUpgrades.bulletSpeed;
-      playerUpgrades.bulletSpeed += added;
-      showWarning(`💨 +${added.toFixed(1)} tốc độ đạn`);
-      updateStatsOverlay();
+  // ❄️ Băng – tăng số lượng (tối đa 10), sau đó tăng sát thương
+  // THÊM ĐIỀU KIỆN: Chỉ hiển thị nâng cấp khi người chơi đạt level 3
+  if (player.level >= 3) {
+    if (skillUpgrades.iceCount < 10) {
+      const tier = randomTier();
+      const value = { Bạc: 1, Vàng: 2, Kim: 3 }[tier];
+      allUpgrades.push({
+        name: `❄️ +${value} cầu băng`,
+        tier,
+        effect: () => {
+          skillUpgrades.iceCount = Math.min(skillUpgrades.iceCount + value, 10);
+          showWarning(`❄️ +${value} băng`);
+          updateStatsOverlay();
+        }
+      });
+    } else {
+      const tier = randomTier();
+      const value = { Bạc: 0.5, Vàng: 1, Kim: 1.5 }[tier];
+      allUpgrades.push({
+        name: `❄️ +${value} sát thương băng`,
+        tier,
+        effect: () => {
+          skillUpgrades.iceDamage += value;
+          showWarning(`❄️ +${value} dmg`);
+          updateStatsOverlay();
+        }
+      });
     }
-  });
-}
+  }
+  
+  // 🔵 Lôi – tăng số lượng (tối đa 6), sau đó tăng sát thương
+  // THÊM ĐIỀU KIỆN: Chỉ hiển thị nâng cấp khi người chơi đạt level 5
+  if (player.level >= 5) {
+    if (skillUpgrades.thunderCount < 6) {
+      const tier = randomTier();
+      const value = 1;
+      allUpgrades.push({
+        name: `🔵 +${value} cầu lôi`,
+        tier,
+        effect: () => {
+          skillUpgrades.thunderCount = Math.min(skillUpgrades.thunderCount + value, 6);
+          showWarning(`🔵 +${value} cầu lôi`);
+          updateStatsOverlay();
+        }
+      });
+    } else {
+      const tier = randomTier();
+      const value = { Bạc: 1, Vàng: 2, Kim: 3 }[tier];
+      allUpgrades.push({
+        name: `🔵 +${value} sát thương lôi`,
+        tier,
+        effect: () => {
+          skillUpgrades.thunderDamage += value;
+          showWarning(`🔵 +${value} dmg lôi`);
+          updateStatsOverlay();
+        }
+      });
+    }
+  }
 
-// 🧨 Số lượng đạn – nếu chưa max
-if (playerUpgrades.lineBulletCount < MAX_LINE_BULLETS) {
-  const tier = randomTier();
-  const value = 1;
-  allUpgrades.push({
-    name: "🧨 số lượng đạn",
-    key: "lineBulletCount",
-    tier,
-    value,
-    effect: () => {
-      playerUpgrades.lineBulletCount += value;
-      showWarning(`🧨 +${value} viên mỗi hàng`);
-      updateStatsOverlay();
-    }
-  });
-}
-
-// 👟 Tốc độ chạy – hiếm và chỉ 1 cấp (nếu chưa max)
-if (player.speed < MAX_MOVE_SPEED) {
-  const value = UPGRADE_VALUES.Rare.moveSpeed;
-  allUpgrades.push({
-    name: "👟 Tốc độ chạy",
-    key: "moveSpeed",
-    tier: "Rare",
-    value,
-    effect: () => {
-      player.speed = Math.min(player.speed + value, MAX_MOVE_SPEED);
-      showWarning(`👟 +${value.toFixed(1)} tốc độ`);
-      updateStatsOverlay();
-    }
-  });
-}
-// --- Nâng cấp kỹ năng Fairy ---
-if (skillUpgrades.fairyCount < 3) {
+  // 🔫 Hướng bắn – nếu chưa max
+  if (playerUpgrades.fireRate < MAX_FIRE_RATE) {
+    const tier = randomTier();
+    const value = UPGRADE_VALUES[tier].fireRate;
     allUpgrades.push({
+      name: "🔫 Hướng bắn",
+      key: "fireRate",
+      tier,
+      value,
+      effect: () => {
+        const added = Math.min(playerUpgrades.fireRate + value, MAX_FIRE_RATE) - playerUpgrades.fireRate;
+        playerUpgrades.fireRate += added;
+        showWarning(`🔫 +${added} hướng bắn`);
+        updateStatsOverlay();
+      }
+    });
+  }
+
+  // 💥 Sát thương – luôn có thể nâng
+  {
+    const tier = randomTier();
+    const value = UPGRADE_VALUES[tier].damageBoost;
+    allUpgrades.push({
+      name: "💥 Sát thương",
+      key: "damageBoost",
+      tier,
+      value,
+      effect: () => {
+        playerUpgrades.damageBoost += value;
+        showWarning(`💥 +${value} sát thương`);
+        updateStatsOverlay();
+      }
+    });
+  }
+
+  // ❤️ Máu – luôn có thể nâng
+  {
+    const tier = randomTier();
+    const value = UPGRADE_VALUES[tier].hpBoost;
+    allUpgrades.push({
+      name: "❤️ Tăng máu",
+      key: "hpBoost",
+      tier,
+      value,
+      effect: () => {
+        player.hearts += value;
+        playerUpgrades.hpBoost += 1;
+        showWarning(`❤️ +${value}`);
+        updateUI();
+        updateStatsOverlay();
+      }
+    });
+  }
+
+  // 💨 Tốc độ đạn tối đa 10
+  if (playerUpgrades.bulletSpeed < MAX_BULLET_SPEED) {
+    const tier = randomTier();
+    const value = UPGRADE_VALUES[tier].bulletSpeed;
+    allUpgrades.push({
+      name: "💨 Tốc độ đạn",
+      key: "bulletSpeed",
+      tier,
+      value,
+      effect: () => {
+        const added = Math.min(playerUpgrades.bulletSpeed + value, MAX_BULLET_SPEED) - playerUpgrades.bulletSpeed;
+        playerUpgrades.bulletSpeed += added;
+        showWarning(`💨 +${added.toFixed(1)} tốc độ đạn`);
+        updateStatsOverlay();
+      }
+    });
+  }
+
+  // 🧨 Số lượng đạn – nếu chưa max
+  if (playerUpgrades.lineBulletCount < MAX_LINE_BULLETS) {
+    const tier = randomTier();
+    const value = 1;
+    allUpgrades.push({
+      name: "🧨 số lượng đạn",
+      key: "lineBulletCount",
+      tier,
+      value,
+      effect: () => {
+        playerUpgrades.lineBulletCount += value;
+        showWarning(`🧨 +${value} viên mỗi hàng`);
+        updateStatsOverlay();
+      }
+    });
+  }
+
+  // 👟 Tốc độ chạy – hiếm và chỉ 1 cấp (nếu chưa max)
+  if (player.speed < MAX_MOVE_SPEED) {
+    const value = UPGRADE_VALUES.Rare.moveSpeed;
+    allUpgrades.push({
+      name: "👟 Tốc độ chạy",
+      key: "moveSpeed",
+      tier: "Rare",
+      value,
+      effect: () => {
+        player.speed = Math.min(player.speed + value, MAX_MOVE_SPEED);
+        showWarning(`👟 +${value.toFixed(1)} tốc độ`);
+        updateStatsOverlay();
+      }
+    });
+  }
+  
+  // --- Nâng cấp kỹ năng Fairy ---
+  // THÊM ĐIỀU KIỆN: Chỉ hiển thị nâng cấp khi người chơi đạt level 7
+  if (player.level >= 7) {
+    if (skillUpgrades.fairyCount < 3) {
+      allUpgrades.push({
         name: `🦋 +1 Fairy (Tối đa 3)`,
         tier: "Kim",
         effect: () => {
-            skillUpgrades.fairyCount++;
-            showWarning(`🦋 Số lượng Fairy: ${skillUpgrades.fairyCount}`);
+          skillUpgrades.fairyCount++;
+          showWarning(`🦋 Số lượng Fairy: ${skillUpgrades.fairyCount}`);
         }
-    });
-} else {
-    // Khi đã đủ 3 Fairy, bắt đầu nâng cấp chỉ số
-    // Nâng cấp hồi máu
-    const healTier = randomTier();
-    const healValue = { Bạc: 1, Vàng: 2, Kim: 3 }[healTier];
-    allUpgrades.push({
+      });
+    } else {
+      // Khi đã đủ 3 Fairy, bắt đầu nâng cấp chỉ số
+      // Nâng cấp hồi máu
+      const healTier = randomTier();
+      const healValue = { Bạc: 1, Vàng: 2, Kim: 3 }[healTier];
+      allUpgrades.push({
         name: `🦋 +${healValue} Hồi máu/giây`,
         tier: healTier,
         effect: () => {
-            skillUpgrades.fairyHealLevel += healValue;
-            showWarning(`🦋 Nâng cấp hồi máu!`);
+          skillUpgrades.fairyHealLevel += healValue;
+          showWarning(`🦋 Nâng cấp hồi máu!`);
         }
-    });
+      });
 
-    // Nâng cấp sát thương
-    const dmgTier = randomTier();
-    const dmgValue = { Bạc: 1, Vàng: 2, Kim: 3 }[dmgTier];
-    allUpgrades.push({
+      // Nâng cấp sát thương
+      const dmgTier = randomTier();
+      const dmgValue = { Bạc: 1, Vàng: 2, Kim: 3 }[dmgTier];
+      allUpgrades.push({
         name: `🦋 +${dmgValue} Sát thương`,
         tier: dmgTier,
         effect: () => {
-            skillUpgrades.fairyDamageLevel += dmgValue;
-            showWarning(`🦋 Nâng cấp sát thương!`);
+          skillUpgrades.fairyDamageLevel += dmgValue;
+          showWarning(`🦋 Nâng cấp sát thương!`);
         }
-    });
-}
-// --- Nâng cấp Hồi máu cho Hào quang ---
-const currentAuraHeal = 1 + skillUpgrades.auraHealLevel;
-if (currentAuraHeal < 5) { // Chỉ hiển thị nếu chưa đạt tối đa
-    const tier = randomTier();
-    const value = { Bạc: 1, Vàng: 2, Kim: 3 }[tier];
-    
-    allUpgrades.push({
+      });
+    }
+  }
+  
+  // --- Nâng cấp Hồi máu cho Hào quang ---
+  // THÊM ĐIỀU KIỆN: Chỉ hiển thị nâng cấp khi người chơi đạt level 6
+  if (player.level >= 6) {
+    const currentAuraHeal = 1 + skillUpgrades.auraHealLevel;
+    if (currentAuraHeal < 5) { // Chỉ hiển thị nếu chưa đạt tối đa
+      const tier = randomTier();
+      const value = { Bạc: 1, Vàng: 2, Kim: 3 }[tier];
+
+      allUpgrades.push({
         name: `✨ +${value} Hồi máu`,
         tier: tier,
         effect: () => {
-            skillUpgrades.auraHealLevel += value;
-            const finalHeal = Math.min(1 + skillUpgrades.auraHealLevel, 5);
-            showWarning(`✨ Hồi máu: ${finalHeal} HP/3s`);
-            updateStatsOverlay(); // Cập nhật bảng thống kê nếu có
+          skillUpgrades.auraHealLevel += value;
+          const finalHeal = Math.min(1 + skillUpgrades.auraHealLevel, 5);
+          showWarning(`✨ Hồi máu: ${finalHeal} HP/3s`);
+          updateStatsOverlay(); // Cập nhật bảng thống kê nếu có
         }
-    });
-}
+      });
+    }
+  }
 
-// 🎲 Xáo trộn và chọn ngẫu nhiên 3 nâng cấp
-const choices = allUpgrades.sort(() => Math.random() - 0.5).slice(0, 3);
-// 🖱️ Tạo nút cho từng nâng cấp
-choices.forEach(up => {
-const btn = document.createElement("button");
+  // 🎲 Xáo trộn và chọn ngẫu nhiên 3 nâng cấp
+  const choices = allUpgrades.sort(() => Math.random() - 0.5).slice(0, 3);
+  // 🖱️ Tạo nút cho từng nâng cấp
+  choices.forEach(up => {
+    const btn = document.createElement("button");
     btn.innerText = up.name;
     btn.style.borderColor = TIER_COLORS[up.tier]; // viền theo bậc
- btn.onclick = () => {
-  up.effect(); // thực thi nâng cấp
-  popup.style.display = "none";
-  isPaused = false;
-  lastWaveTime = Date.now(); // ⏱️ bắt đầu đếm thời gian
+    btn.onclick = () => {
+      up.effect(); // thực thi nâng cấp
+      popup.style.display = "none";
+      isPaused = false;
+      lastWaveTime = Date.now(); // ⏱️ bắt đầu đếm thời gian
 
-// ⏳ Chờ 500ms mới hiển thị wave
-if (pendingWave !== null) {
-    setTimeout(() => {
-      showWavePopup();
-      pendingWave = null;
-    }, 500);
-}
-};
+      // ⏳ Chờ 500ms mới hiển thị wave
+      if (pendingWave !== null) {
+        setTimeout(() => {
+          showWavePopup();
+          pendingWave = null;
+        }, 500);
+      }
+    };
     container.appendChild(btn);
-});
+  });
 
   popup.style.display = "block"; // hiển thị popup
   isPaused = true; // ⏸️ Tạm dừng game
-  popup.style.display = "block";
 }
 
 // 🎲 Chọn bậc nâng cấp ngẫu nhiên theo tỷ lệ
@@ -7570,50 +7593,56 @@ function isOverLimit(upgrade){
 }
 
 /* ========= POPUP ========= */
-function showSkillLevelUpPopup(){
-  isPaused = true;                                                   // ⏸️
-
-  const popup     = document.getElementById('skillPopup');
-  const container = document.getElementById('skillChoices');
+function showSkillLevelUpPopup() {
+  isPaused = true; // ⏸️
+  const popup = document.getElementById('skillPopup');
+  
+  // Sửa lỗi: Lấy đúng container của popup kỹ năng thay vì popup nâng cấp wave
+  const container = document.getElementById('skillChoices'); 
   container.innerHTML = '';
 
-  /* 1️⃣ kỹ năng chưa học & nâng cấp hợp lệ */
-  const unlearned = skillsData.filter(sk => !activeSkills.includes(sk));
-  const upgrades  = activeSkills
-      .flatMap(sk => (sk.upgrades || []).map(up => ({ ...up, skillName: sk.name })))
-      .filter(up => !isOverLimit(up));                               // bỏ gói max
+  /* 1️⃣ Lọc kỹ năng chưa học & nâng cấp hợp lệ */
+  // THAY ĐỔI CỐT LÕI NẰM Ở ĐÂY
+  // Lọc các kỹ năng chưa học VÀ người chơi đã đủ cấp độ yêu cầu
+  const unlearned = skillsData.filter((skill, index) => {
+    const requiredLevel = index + 1; // Skill ở vị trí 0 -> yêu cầu lv 1, vị trí 1 -> yêu cầu lv 2, ...
+    return player.level >= requiredLevel && !activeSkills.includes(skill);
+  });
+  
+  const upgrades = activeSkills
+    .flatMap(sk => (sk.upgrades || []).map(up => ({ ...up, skillName: sk.name })))
+    .filter(up => !isOverLimit(up)); // bỏ gói max
 
-  /* 2️⃣ ghép pool & chọn 3 lựa chọn */
+  /* 2️⃣ Ghép pool & chọn 3 lựa chọn */
   let choices;
-  if (unlearned.length){                                             // luôn có ≥1 skill mới
+  if (unlearned.length) { // Luôn ưu tiên có ≥1 skill mới nếu có thể
     const pickNew = rand(unlearned);
-    const pool    = [...unlearned.filter(s => s!==pickNew), ...upgrades];
+    const pool = [...unlearned.filter(s => s !== pickNew), ...upgrades];
     choices = [pickNew, ...shuffle(pool).slice(0, 2)];
-  } else {                                                           // đã học hết
-    const unique = {};                                               // mỗi skill 1 upgrade ngẫu nhiên
+  } else { // Đã học hết các kỹ năng có thể học ở level hiện tại
+    const unique = {}; // mỗi skill 1 upgrade ngẫu nhiên
     upgrades.forEach(up => (unique[up.skillName] ||= []).push(up));
     choices = shuffle(Object.values(unique).map(rand)).slice(0, 3);
   }
 
-  /* 3️⃣ render nút */
+  /* 3️⃣ Render nút bấm */
   choices.forEach(ch => {
     const btn = document.createElement('button');
-    if (ch.icon){                                                    // kỹ năng mới
+    if (ch.icon) { // Kỹ năng mới
       btn.textContent = `${ch.icon} ${ch.name}`;
       btn.onclick = () => {
         learnSkill(skillsData.indexOf(ch));
         popup.style.display = 'none';
-        isPaused = false;                                            // ▶️
+        isPaused = false; // ▶️
       };
-    } else {                                                         // nâng cấp
+    } else { // Nâng cấp
       btn.textContent = ch.name;
-      btn.style.borderColor =
-        {Bạc:'#aaa',Vàng:'gold',Kim:'#c770ff',Đỏ:'red'}[ch.tier] || '#ccc';
+      btn.style.borderColor = { Bạc: '#aaa', Vàng: 'gold', Kim: '#c770ff', Đỏ: 'red' }[ch.tier] || '#ccc';
       btn.onclick = () => {
-        ch.effect?.();              // thực thi
+        ch.effect?.(); // thực thi
         showWarning(` ${ch.name}`);
         popup.style.display = 'none';
-        isPaused = false;            // ▶️
+        isPaused = false; // ▶️
       };
     }
     container.appendChild(btn);
@@ -7761,7 +7790,7 @@ const skillsData = [
     icon: "🌀",
     manaCost: 50,
     duration: 30000,
-    baseDamage: 99,
+    baseDamage: 10,
     description: "Mở một cổng dịch chuyển trong 30 giây. Bước vào cổng sẽ đưa bạn đến một vị trí ngẫu nhiên an toàn trên bản đồ."
   },
 ];
