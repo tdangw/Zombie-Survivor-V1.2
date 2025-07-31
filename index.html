@@ -943,8 +943,8 @@ let skillStats = {};             // 📊 Thống kê kỹ năng
 // 🧍 Trạng thái người chơi
 const player = {
   x: 480, y: 360, size: 20, speed: 1,
-  hearts: 100, energy: 1111, mana: 1111,
-  level: 11, score: 0,
+  hearts: 10, energy: 1, mana: 1,
+  level: 1, score: 0,
   hitTimer: 0,
   name: "Player",
   isDying: false,
@@ -2089,12 +2089,12 @@ function spawnZombie() {
 
     // 1. Cấu hình HP - bạn có thể dễ dàng thay đổi các số này để cân bằng game
     const HP_CONFIG = {
-        BASE_HP: 100,                  // Máu cơ bản của zombie cấp 1 ở wave 1
+        BASE_HP: 1,                  // Máu cơ bản của zombie cấp 1 ở wave 1
         HP_PER_ZOMBIE_LEVEL: 5,       // Máu cộng thêm cho mỗi cấp của zombie
         HP_PER_WAVE: 2.5,             // Máu cộng thêm cho mỗi wave
         RANDOM_VARIANCE: 0.20,        // Độ chênh lệch HP ngẫu nhiên (+/- 20%)
         ELITE_CHANCE: 0.05,           // 5% tỷ lệ xuất hiện zombie Tinh Anh
-        ELITE_HP_MULTIPLIER: 2.5      // Zombie Tinh Anh có gấp 2.5 lần máu
+        ELITE_HP_MULTIPLIER: 5      // Zombie Tinh Anh có gấp 5 lần máu
     };
 
     // 2. Tính toán HP cơ bản dựa trên cấp zombie và wave
@@ -2133,8 +2133,8 @@ function spawnZombie() {
   z.wanderAngle = Math.random() * Math.PI * 2;
 // 🎲 Chọn kiểu wander: 80% di chuyển, 20% đứng im
   z.wanderBehavior = Math.random() < 0.2 ? "pause" : "move";
-  z.baseSpeed = 0.02 + Math.random() * 0.3; // tốc độ khi chasing - tốc độ khi đuổi theo
-  z.speed = 0.015 + Math.random() * 0.05;   // tốc độ khi wandering - tốc độ khi lang thang
+  z.baseSpeed = 0.2 + Math.random() * 0.8; // tốc độ khi chasing - tốc độ khi đuổi theo
+  z.speed = 0.15 + Math.random() * 0.5;   // tốc độ khi wandering - tốc độ khi lang thang
   z.color = zombieColorsByLevel[level];
   z.type = "normal";
   z.radius = 15;
@@ -2186,7 +2186,7 @@ function spawnBoss() {
   z.radius = 30;
   z.canHit = true;
   z.baseSpeed = 0.015 + Math.random() * 0.2; // Lưu tốc độ gốc | Tốc độ boss
-  z.speed = z.baseSpeed; // Bắt đầu bằng tốc độ gốc
+  z.speed = z.baseSpeed; // Tốc độ zombie
   z.isBoss = true;
   // HP boss tăng theo wave và level player + random 1~100
   z.hp = 500 + wave * 2 + Math.floor(player.level / 2) + Math.floor(Math.random() * 100 + 1);
