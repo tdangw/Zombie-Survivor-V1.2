@@ -971,7 +971,7 @@ const skillUpgrades = {
 
   // ⚔️ Kiếm: cấp độ mưa kiếm (số lượng + sát thương)
   swordLevel: 1,           // cấp độ mưa kiếm, tăng số lượng theo cấp
-  swordDamage: 2,          // sát thương mỗi kiếm
+  swordDamage: 3,          // sát thương mỗi kiếm
 
   // 🔥 Lửa: số lượng cầu lửa và sát thương
   fireCount: 2,            // bắt đầu 2 quả cầu, tối đa 10
@@ -979,10 +979,10 @@ const skillUpgrades = {
 
   // ❄️ Băng: số lượng cầu băng và sát thương
   iceCount: 2,             // bắt đầu 2 quả cầu, tối đa 10
-  iceDamage: 1,             // sát thương mỗi quả
+  iceDamage: 2,             // sát thương mỗi quả
   // Lôi
   thunderCount: 2,         // bắt đầu 2 quả cầu lôi, tối đa 6
-  thunderDamage: 1,        // sát thương mỗi quả cầu lôi
+  thunderDamage: 3,        // sát thương mỗi quả cầu lôi
   // 🦋 Nâng cấp kỹ năng Fairy
   fairyCount: 1,      // Số lượng Fairy, tối đa 3
   fairyHealLevel: 0,  // Cấp độ hồi máu
@@ -1006,9 +1006,9 @@ let supportAuraEndTime = 0;
 let lastAuraHealTime = 0;
 // ⚙️ Trạng thái điều khiển & kỹ năng
 let lastManualShootTime = 0;
-const manualShootCooldown = 1000; // delay 1 giây
+const manualShootCooldown = 500; // delay 1 giây
 let lastAutoShootTime = 0;
-const autoShootCooldown = 1000;
+const autoShootCooldown = 500;
 
 let keys = {};
 let autoShoot = false;
@@ -1590,8 +1590,9 @@ function calculateZombieDamage(z) {
     else if (z.isBoss) baseDamage = 3;
     else if (z.type === 'miniBoss') baseDamage = 2;
 
-    const damageFromWave = wave * 1;
-    const damageFromPlayerLevel = player.level * 1;
+// ✅ Giảm sát thương cộng thêm ở wave & level thấp
+    const damageFromWave = Math.max(0, wave - 1);
+    const damageFromPlayerLevel = Math.max(0, player.level - 1);
 
     let totalDamage = baseDamage + damageFromWave + damageFromPlayerLevel;
     
@@ -2039,12 +2040,13 @@ function getZombieLevelByWave(wave) {
     const LEVEL_RANGE = 4;
 
     // ⚠️ ƯU TIÊN CÂN BẰNG CHO WAVE 1 & 2
-    if (wave === 1) return 0; // Luôn ra zombie cấp thấp nhất
+    if (wave === 1) {
+        const r = Math.random();
+        return r < 0.8 ? 0 : 1; // 80% cấp 1 (0), 20% cấp 2 (1)
+    }
     if (wave === 2) {
         const r = Math.random();
-        if (r < 0.7) return 0;
-        if (r < 0.95) return 1;
-        return 2;
+        return r < 0.7 ? 0 : 2; // 70% cấp 1 (0), 30% cấp 3 (2)
     }
 
     // --- PHẦN GỐC GIỮ NGUYÊN CHO WAVE >= 3 ---
@@ -2800,7 +2802,7 @@ if (isNight()) {
     }
 
     // --- LOGIC HỒI MÁU (BAN ĐÊM) VÀ GIẢM MÁU (BAN NGÀY) ---
-    if (Date.now() - z.lastRegenTime > 3000) {
+    if (Date.now() - z.lastRegenTime > 30000) {
         if (isNight()) {
             z.hp += 1;
             z.baseHp += 1;
@@ -3017,8 +3019,8 @@ const requiredScore = player.level * 300; // Tăng level #Tăng cấp
 if (player.score >= requiredScore) {
   player.level++;
   player.hearts += 1 + (UPGRADE_TIERS.hpBoost[playerUpgrades.hpBoost] || 0);
-  player.energy += 2; // 🎁 thưởng 2 năng lượng khi lên cấp
-  player.mana += 2;   // 💠 thưởng 2 mana khi lên cấp
+  player.energy += 10; // 🎁 thưởng 2 năng lượng khi lên cấp
+  player.mana += 10;   // 💠 thưởng 2 mana khi lên cấp
   playerUpgrades.damageBoost += 0.5; // 💥 Tăng sát thương mỗi level
   showWarning("+0.5 💥");
 
@@ -3945,6 +3947,10 @@ zombies = zombies.filter(z => z.active);
 zombies.forEach(z => updateBigBossLazer(z, globalDeltaTime));
   updateUI();
   updateStatsOverlay();
+    const skillsOverlay = document.getElementById('skillsOverlay');
+  if (skillsOverlay && !skillsOverlay.classList.contains('hidden')) {
+    updateSkillsList();
+  }
   updateEnemyBullets();
 }
 // Lazer boss
@@ -7914,49 +7920,55 @@ function buildSkillTooltip(skill) {
 // 🧪 Hàm học kỹ năng mới
 function updateSkillsList() {
   const list = document.getElementById('skills-list');
-  list.innerHTML = '';
+  const now = Date.now();
+  list.innerHTML = ''; // Xây dựng lại danh sách mỗi lần cập nhật
+
   activeSkills.forEach(skill => {
     const div = document.createElement('div');
     div.className = 'skill-item';
-    // gán tooltip 💡
     div.dataset.tooltip = buildSkillTooltip(skill);
-   // div.dataset.tooltip = skillTooltipMap[skill.name] || skill.description || '';
-    // Hiển thị mana & disable nếu không đủ
-    const canUse = player.mana >= skill.manaCost;
-    div.innerHTML = `<span class="skill-icon">${skill.icon}</span> ${skill.name} - ${skill.manaCost}💠`;
 
-    if (!canUse) {
-      div.style.opacity = 0.5;
-      div.style.pointerEvents = 'none';
-}
+    // KIỂM TRA TRẠNG THÁI HỒI CHIÊU
+    if (skill.endTime && now < skill.endTime) {
+      const remain = Math.ceil((skill.endTime - now) / 1000);
+      div.innerHTML = `<span class="skill-icon">${skill.icon}</span> ${skill.name} - ${remain}s`;
+      div.classList.add('active'); // Dùng class 'active' để vô hiệu hóa trong CSS
+    } else {
+      // Kỹ năng đã sẵn sàng
+      if (skill.endTime) {
+        skill.endTime = null; // Xóa trạng thái hồi chiêu khi đã kết thúc
+      }
 
-    div.onclick = () => {
-      activateSkill(skill); // Gọi hàm đã định nghĩa
-};
+      const canUse = player.mana >= skill.manaCost;
+      div.innerHTML = `<span class="skill-icon">${skill.icon}</span> ${skill.name} - ${skill.manaCost}💠`;
 
+      if (canUse) {
+        // SỬA LỖI: Dùng onmousedown để bắt sự kiện ngay lập tức
+        div.onmousedown = () => activateSkill(skill);
+      } else {
+        div.style.opacity = 0.5;
+        div.style.pointerEvents = 'none';
+      }
+    }
     list.appendChild(div);
-});
-/* sau khi render skills list: */
-document.querySelectorAll('.skill-item[data-tooltip]').forEach(it=>{
-  it.addEventListener('mouseenter',()=>{
-    /* ---------- 1. ƯỚC LƯỢNG CAO TOOLTIP ---------- */
-    const ln    = (it.dataset.tooltip.match(/\n/g)?.length || 0) + 1; // số dòng
-    const hTip  = ln * 18 + 12;      // 14 px/line + padding (≈)
-
-    /* ---------- 2. TÍNH DỊCH LÊN/XUỐNG ---------- */
-    const r     = it.getBoundingClientRect();
-    const gap   = 8;
-    const overTop    = Math.max(gap - r.top, 0);                       // thiếu phía trên
-    const overBottom = Math.max((r.top + hTip) - (innerHeight - gap), 0);
-    const shiftValue = overTop - overBottom;                           // + xuống | – lên
-
-    it.style.setProperty('--tip-shift', `${shiftValue}px`);
   });
 
-  it.addEventListener('mouseleave',()=>{
-    it.style.removeProperty('--tip-shift');
+  // Gắn lại logic cho tooltip (giữ nguyên logic gốc của bạn)
+  document.querySelectorAll('.skill-item[data-tooltip]').forEach(it => {
+    it.addEventListener('mouseenter', () => {
+      const ln = (it.dataset.tooltip.match(/\n/g)?.length || 0) + 1;
+      const hTip = ln * 18 + 12;
+      const r = it.getBoundingClientRect();
+      const gap = 8;
+      const overTop = Math.max(gap - r.top, 0);
+      const overBottom = Math.max((r.top + hTip) - (innerHeight - gap), 0);
+      const shiftValue = overTop - overBottom;
+      it.style.setProperty('--tip-shift', `${shiftValue}px`);
+    });
+    it.addEventListener('mouseleave', () => {
+      it.style.removeProperty('--tip-shift');
+    });
   });
-});
 }
 // 🧪 Test: Thêm kỹ năng bất kỳ bằng phím số 1–9, 0
 document.addEventListener("keydown", (e) => {
@@ -7970,26 +7982,30 @@ document.addEventListener("keydown", (e) => {
 });
 
 function activateSkill(skill) {
-  if (!skill || player.mana < skill.manaCost) return;
-  player.mana -= skill.manaCost;
-  console.log("Đang thử kích hoạt kỹ năng:", skill.name);
+  // Kiểm tra nếu không đủ mana hoặc kỹ năng đang hồi chiêu
+  if (!skill || player.mana < skill.manaCost || (skill.endTime && Date.now() < skill.endTime)) {
+    return;
+  }
 
+  player.mana -= skill.manaCost;
+  // Gán thời gian kết thúc hồi chiêu vào chính đối tượng skill
+  skill.endTime = Date.now() + skill.duration;
+
+  // Logic kích hoạt hiệu ứng của kỹ năng (giữ nguyên)
   switch (skill.name) {
     case "Khiên bảo vệ": activateShield(skill); break;
     case "Vệ tinh laze":
       satelliteActive = true;
       satelliteEndTime = Date.now() + skill.duration;
-      // Số lượng vệ tinh = 1 + (skill.level || 0), tối đa 2
-      const satCount = Math.min(skill.level, 2);// nếu không có level thì mặc định là 1
-      // Vị trí vệ tinh: 1 bên phải, 1 bên trái player
+      const satCount = Math.min(skill.level || 1, 2);
       satellites = [];
       if (satCount === 1) {
-      satellites.push({ x: player.x + 30, y: player.y - 30 });
-  } else {
-    satellites.push({ x: player.x + 30, y: player.y - 30 });  // phải
-    satellites.push({ x: player.x - 30, y: player.y - 30 });  // trái
-  }
-    break;
+        satellites.push({ x: player.x + 30, y: player.y - 30 });
+      } else {
+        satellites.push({ x: player.x + 30, y: player.y - 30 });
+        satellites.push({ x: player.x - 30, y: player.y - 30 });
+      }
+      break;
     case "Tên lửa F18": activateTwinMissiles(skill); break;
     case "UFO tấn công": activateUFO(skill); break;
     case "bão sét": activateLightning(skill); break;
@@ -7997,11 +8013,13 @@ function activateSkill(skill) {
     case "Ảo ảnh phân thân": activateClones(skill); break;
     case "Hố đen": activateBlackHole(skill); break;
     case "Biến hình": activateDisguise(skill); break;
-    case "Boom hạt nhân": console.log("Đã khớp với case 'Boom hạt nhân'!");
-activateNuclearBomb(skill); break;
-    case 'Quả cầu hấp huyết':activateBloodOrb(skill); break;
+    case "Boom hạt nhân": activateNuclearBomb(skill); break;
+    case "Quả cầu hấp huyết": activateBloodOrb(skill); break;
     case "Cổng Không Gian": activateSpaceGate(skill); break;
   }
+
+  showWarning(`${skill.icon} ${skill.name}!`);
+
 // Làm sáng nút kỹ năng tương ứng và đếm ngược
 const list = document.getElementById('skills-list').children;
 for (let i = 0; i < list.length; i++) {
@@ -8565,7 +8583,6 @@ function activateNuclearBomb(skill) {
 function activateBloodOrb(skill) {
     bloodOrbActive = true;
     bloodOrbEndTime = Date.now() + skill.duration;
-    player.mana -= skill.manaCost;
 
     // Xác định số lượng quả cầu theo level (tối đa 2)
     const maxCount = Math.min(skill.level || 2, 2); // Tối đa 2 quả cầu hấp huyết
