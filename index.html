@@ -721,6 +721,61 @@ button.active {
   opacity: 1;
 }
 
+/* --- CSS cho Debug Menu (Phiên bản thanh kéo) --- */
+#debugMenu {
+  max-width: 22rem;
+  width: 90%;
+  padding-bottom: 1rem;
+  
+  /* BỔ SUNG: Giới hạn chiều cao và dùng Flexbox */
+  display: flex;
+  flex-direction: column;
+  max-height: 90vh; /* Chiều cao tối đa bằng 85% chiều cao màn hình */
+}
+
+.debug-grid {
+  display: grid;
+  grid-template-columns: auto 1fr; 
+  gap: 0.8rem 1rem;
+  align-items: center;
+  margin-bottom: 1rem;
+  text-align: left;
+
+  /* BỔ SUNG: Cho phép cuộn dọc khi nội dung dài hơn */
+  overflow-y: auto;
+  padding-right: 1rem; /* Thêm khoảng đệm nhỏ tránh nội dung sát viền */
+
+  /* --- Các thuộc tính để ẩn thanh cuộn --- */
+  /* Cho Firefox */
+  scrollbar-width: none;
+  /* Cho Internet Explorer và Edge cũ */
+  -ms-overflow-style: none;
+}
+
+/* Cho các trình duyệt Webkit (Chrome, Safari, Edge mới) */
+.debug-grid::-webkit-scrollbar {
+    display: none;
+}
+
+/* Thêm định nghĩa để ẩn Debug Menu khi có class 'hidden' */
+#debugMenu.hidden {
+    display: none;
+}
+.debug-subtitle {
+  grid-column: 1 / -1; /* Tiêu đề chiếm trọn chiều rộng của grid */
+  text-align: center;
+  color: gold;
+  margin-top: 1rem;
+  margin-bottom: 0.5rem;
+  border-top: 1px solid #446688;
+  padding-top: 1rem;
+}
+/* Chỉnh lại chiều rộng cho ô nhập số Kill */
+#debug-kill.debug-input {
+    width: 10em; /* Giới hạn chiều rộng (bạn có thể thay đổi số 12) */
+    justify-self: start; /* Căn lề trái trong ô layout */
+}
+
 /* kết thúc style */
 </style>
 </head>
@@ -891,7 +946,7 @@ let backgroundMushrooms = [];
 let backgroundRocks = [];
 let backgroundBalloons = [];
 let backgroundSeeds = [];
-let dayTime = 0.25; // 0.25 = 6h
+let dayTime = 0.45; // 0.25 = 6h
 let dayDirection = 1; // giữ lại cờ này như cũ
 const dayDuration = 600; // 1 vòng ngày đêm = 96 giây thực tế
 let lastUpdateTime = Date.now();
@@ -2084,41 +2139,58 @@ function spawnZombie() {
   z.style = zombieTypes[Math.floor(Math.random() * zombieTypes.length)];
   const level = getZombieLevelByWave(wave); // cấp từ 0–9
 // HP zombie tăng theo level player + random 1~10
-    // --- BẮT ĐẦU PHẦN TÍNH HP CẢI TIẾN ---
+// --- BẮT ĐẦU PHẦN TÍNH HP CẢI TIẾN ---
 
-    // 1. Cấu hình HP - bạn có thể dễ dàng thay đổi các số này để cân bằng game
-    const HP_CONFIG = {
-        BASE_HP: 1,                  // Máu cơ bản của zombie cấp 1 ở wave 1
-        HP_PER_ZOMBIE_LEVEL: 5,       // Máu cộng thêm cho mỗi cấp của zombie
-        HP_PER_WAVE: 2.5,             // Máu cộng thêm cho mỗi wave
-        RANDOM_VARIANCE: 0.20,        // Độ chênh lệch HP ngẫu nhiên (+/- 20%)
-        ELITE_CHANCE: 0.05,           // 5% tỷ lệ xuất hiện zombie Tinh Anh
-        ELITE_HP_MULTIPLIER: 5      // Zombie Tinh Anh có gấp 5 lần máu
-    };
+    // Kiểm tra xem có phải là wave đầu tiên không.
+    // Wave 1 sẽ có cách tính HP đặc biệt để giúp người chơi dễ khởi đầu.
+    if (wave === 1) {
+        
+        // Gán HP cho zombie là một số nguyên ngẫu nhiên từ 1 đến 4.
+        // Math.random() * 4 -> tạo số thập phân ngẫu nhiên từ 0 đến 3.99...
+        // Math.floor(...)   -> làm tròn xuống (0, 1, 2, hoặc 3)
+        // ... + 1           -> kết quả cuối cùng là 1, 2, 3, hoặc 4.
+        z.hp = Math.floor(Math.random() * 4) + 1;
 
-    // 2. Tính toán HP cơ bản dựa trên cấp zombie và wave
-    let calculatedHp = HP_CONFIG.BASE_HP + 
-                       (level * HP_CONFIG.HP_PER_ZOMBIE_LEVEL) + 
-                       (wave * HP_CONFIG.HP_PER_WAVE);
-
-    // 3. Thêm yếu tố ngẫu nhiên theo tỷ lệ %
-    const variance = calculatedHp * HP_CONFIG.RANDOM_VARIANCE;
-    calculatedHp += Math.random() * variance * 2 - variance; // Thêm/bớt ngẫu nhiên trong khoảng +/- 20%
-
-    // 4. Kiểm tra và tạo zombie Tinh Anh
-    if (Math.random() < HP_CONFIG.ELITE_CHANCE) {
-        calculatedHp *= HP_CONFIG.ELITE_HP_MULTIPLIER;
-        z.isElite = true; // Thêm một cờ để bạn có thể vẽ chúng khác đi nếu muốn
     } else {
-        z.isElite = false;
+        
+        // Nếu không phải wave 1 (tức là từ wave 2 trở đi), áp dụng công thức tính HP phức tạp hơn.
+        // Cấu hình các chỉ số cơ bản để tính toán HP.
+        const HP_CONFIG = {
+            BASE_HP: 1,                  // HP tối thiểu của một zombie.
+            HP_PER_ZOMBIE_LEVEL: 5,      // Lượng HP được cộng thêm cho mỗi cấp của zombie.
+            HP_PER_WAVE: 2.5,            // Lượng HP được cộng thêm cho mỗi wave (độ khó tăng dần).
+            RANDOM_VARIANCE: 0.20,       // Tỉ lệ ngẫu nhiên (+/- 20%) để HP của zombie đa dạng hơn.
+            ELITE_CHANCE: 0.05,          // 5% tỉ lệ xuất hiện zombie Tinh Anh.
+            ELITE_HP_MULTIPLIER: 5       // Zombie Tinh Anh sẽ có lượng HP nhân lên 5 lần.
+        };
+
+        // Tính toán HP cơ bản trước khi thêm yếu tố ngẫu nhiên.
+        // Công thức = HP gốc + HP thưởng theo cấp zombie + HP thưởng theo wave.
+        // (wave - 1) được dùng để đảm bảo việc cộng HP theo wave chỉ bắt đầu từ wave 2.
+        let calculatedHp = HP_CONFIG.BASE_HP +
+                           (level * HP_CONFIG.HP_PER_ZOMBIE_LEVEL) +
+                           ((wave - 1) * HP_CONFIG.HP_PER_WAVE);
+
+        // Thêm yếu tố ngẫu nhiên vào HP đã tính.
+        const variance = calculatedHp * HP_CONFIG.RANDOM_VARIANCE; // Tính toán lượng HP có thể thay đổi (+/- 20%).
+        calculatedHp += Math.random() * variance * 2 - variance;   // Cộng/trừ ngẫu nhiên trong khoảng đó.
+
+        // Kiểm tra xem zombie có phải là loại Tinh Anh (Elite) hay không.
+        if (Math.random() < HP_CONFIG.ELITE_CHANCE) { // Nếu số ngẫu nhiên nhỏ hơn 0.05 (5%)
+            calculatedHp *= HP_CONFIG.ELITE_HP_MULTIPLIER; // Nhân HP lên 5 lần.
+            z.isElite = true; // Đánh dấu đây là zombie Tinh Anh.
+        } else {
+            z.isElite = false; // Đánh dấu đây là zombie thường.
+        }
+
+        // Gán HP cuối cùng cho zombie, làm tròn và đảm bảo không bao giờ nhỏ hơn 1.
+        z.hp = Math.max(1, Math.round(calculatedHp));
     }
 
-    // 5. Gán HP cuối cùng (làm tròn và đảm bảo máu không nhỏ hơn 1)
-    z.hp = Math.max(1, Math.round(calculatedHp));
-    
     // --- KẾT THÚC PHẦN TÍNH HP ---
 
-    z.baseHp = z.hp; // Ghi nhớ HP gốc
+    // Lưu lại lượng HP ban đầu của zombie để dùng cho các logic khác nếu cần.
+    z.baseHp = z.hp;
     z.level = level + 1; // cấp thật từ 1–10
     z.lastDayBuffed = currentDay;
     z.isBuffed = false;
@@ -2458,7 +2530,7 @@ function updateBlades() {
         lastBladeLaunchTime = now; // Đặt lại mốc thời gian
     }
 
-    // VÒNG LẶP CẬP NHẬT TRẠNG THÁI CỦA TỪNG THANH ĐAO (Tương tự như cũ)
+    // VÒNG LẶP CẬP NHẬT TRẠNG THÁI CỦA TỪNG THANH ĐAO
     const formationAngle = (now / 1500);
     swords.forEach(s => {
         switch (s.state) {
@@ -2492,7 +2564,27 @@ function updateBlades() {
                 }
                 zombies.forEach(z => {
                     if (z.active && !s.hitZombies.has(z) && distance(s, z) < 20) {
-                        dealDamageToZombie(z, skillUpgrades.bladeDamage + playerUpgrades.damageBoost);
+                        
+                        // --- BẮT ĐẦU LOGIC SÁT THƯƠNG GIẢM DẦN ---
+
+                        // 1. Tính toán sát thương gốc của đao
+                        const originalDamage = skillUpgrades.bladeDamage + playerUpgrades.damageBoost;
+                        let finalDamage;
+
+                        // 2. Kiểm tra xem đây có phải là mục tiêu đầu tiên không (pierceCount = 0)
+                        if (s.pierceCount === 0) {
+                            // Nếu là mục tiêu đầu tiên, nhận 100% sát thương
+                            finalDamage = originalDamage;
+                        } else {
+                            // Nếu là các mục tiêu sau, nhận 50% sát thương (làm tròn, tối thiểu là 1)
+                            finalDamage = Math.max(1, Math.round(originalDamage * 0.5));
+                        }
+
+                        // 3. Gây sát thương đã tính toán
+                        dealDamageToZombie(z, finalDamage);
+                        
+                        // --- KẾT THÚC LOGIC SÁT THƯƠNG GIẢM DẦN ---
+
                         s.hitZombies.add(z);
                         s.pierceCount++;
                         const impactExplosion = getExplosion(z.x, z.y);
@@ -4622,7 +4714,7 @@ function drawBackgroundByTime(ctx) {
     } else if (hour >= 6 && hour < 11) {
         darkness = 0;
     } else if (hour >= 11 && hour < 13) {
-        darkness = -0.2; // sáng hơn bình thường
+        darkness = -0.1; // sáng hơn bình thường
     } else if (hour >= 13 && hour < 17) {
         darkness = 0;
     } else if (hour >= 17 && hour < 19) {
@@ -4726,7 +4818,7 @@ for (let i = 0; i < 5; i++) {
     // ✈️ 🛩️Máy bay đơn giản phía trên mây
 const planeIcons = ['✈️', '🛩️', '🚀'];
 // Nhóm 1: Dọc rìa trái world map
-for (let i = 0; i < 3; i++) {
+for (let i = 0; i < 1; i++) {
     backgroundPlanes.push({
         x: -200 - Math.random() * 200,  // rìa trái ngoài map
         y: worldHeight / 2 + Math.random() * (worldHeight / 2), // giữa xuống dưới
@@ -4738,7 +4830,7 @@ for (let i = 0; i < 3; i++) {
     });
 }
 // Nhóm 2: Trải dài phía dưới toàn bản đồ
-for (let i = 0; i < 3; i++) {
+for (let i = 0; i < 2; i++) {
     backgroundPlanes.push({
         x: Math.random() * worldWidth,
         y: worldHeight - 100 - Math.random() * 100,
@@ -4766,7 +4858,7 @@ for (let i = 0; i < 3; i++) {
     }
 
     // 🎈 Bóng bay màu ngẫu nhiên giữa map
-for (let i = 0; i < 10; i++) {
+for (let i = 0; i < 5; i++) {
     backgroundBalloons.push({
         x: Math.random() * worldWidth,
         y: worldHeight - 300 - Math.random() * 100,
@@ -4776,7 +4868,7 @@ for (let i = 0; i < 10; i++) {
     });
 }
     // 🌼 Hoa bồ công anh xuất hiện thấp, bay lên cao
-for (let i = 0; i < 35; i++) {
+for (let i = 0; i < 15; i++) {
     backgroundSeeds.push({
         x: Math.random() * worldWidth,
         y: worldHeight - 300 - Math.random() * 100,
@@ -8001,13 +8093,20 @@ function updateSkillsList() {
 }
 // 🧪 Test: Thêm kỹ năng bất kỳ bằng phím số 1–9, 0
 document.addEventListener("keydown", (e) => {
-  const keys = "1234567890-=";
-  const index = keys.indexOf(e.key);
-  if (index >= 0 && skillsData[index] && !activeSkills.includes(skillsData[index])) {
-  activeSkills.push(skillsData[index]);
-  showWarning(`🧪 Đã thêm kỹ năng: ${skillsData[index].name}`);
-  updateSkillsList();
-}
+    // THÊM DÒNG KIỂM TRA:
+    // Nếu người dùng đang gõ trong một ô INPUT, hãy thoát ra ngay và không làm gì cả.
+    if (e.target.tagName === 'INPUT') {
+        return;
+    }
+
+    const keys = "1234567890-=";
+    const index = keys.indexOf(e.key);
+
+    // Nếu phím được nhấn nằm trong danh sách phím test
+    if (index >= 0 && skillsData[index]) {
+        // Gọi trực tiếp hàm learnSkill để đảm bảo logic đồng nhất
+        learnSkill(index);
+    }
 });
 
 function activateSkill(skill) {
@@ -8046,8 +8145,6 @@ function activateSkill(skill) {
     case "Quả cầu hấp huyết": activateBloodOrb(skill); break;
     case "Cổng Không Gian": activateSpaceGate(skill); break;
   }
-
-  showWarning(`${skill.icon} ${skill.name}!`);
 
 // Làm sáng nút kỹ năng tương ứng và đếm ngược
 const list = document.getElementById('skills-list').children;
@@ -8778,6 +8875,136 @@ function hideInfo() {
   document.getElementById("infoOverlay").style.display = "none";
 }
 
+// --- LOGIC CHO DEBUG MENU (Phiên bản thanh kéo) ---
+
+// Hàm mở/đóng menu
+function toggleDebugMenu() {
+    const debugMenu = document.getElementById('debugMenu');
+    if (!debugMenu) return;
+
+    const isHidden = debugMenu.classList.toggle('hidden');
+    isPaused = !isHidden;
+
+    if (!isHidden) {
+        populateDebugMenu();
+    }
+}
+
+// Hàm điền giá trị hiện tại của người chơi vào các thanh kéo
+function populateDebugMenu() {
+    // Helper function để gán giá trị cho cả thanh kéo và số hiển thị
+    const setSliderValue = (id, value) => {
+        const slider = document.getElementById(id);
+        if (slider) {
+            slider.value = value;
+            const valueSpan = slider.nextElementSibling;
+            if (valueSpan) {
+                // Nếu step là số thập phân, hiển thị 1 chữ số sau dấu phẩy
+                if (slider.step.includes('.')) {
+                    valueSpan.textContent = parseFloat(value).toFixed(1);
+                } else {
+                    valueSpan.textContent = value;
+                }
+            }
+        }
+    };
+
+    // Chỉ số cơ bản
+    setSliderValue('debug-level', player.level);
+    setSliderValue('debug-hp', player.hearts);
+    setSliderValue('debug-mana', player.mana);
+    setSliderValue('debug-energy', player.energy);
+    setSliderValue('debug-moveSpeed', player.speed);
+    setSliderValue('debug-damage', playerUpgrades.damageBoost);
+    setSliderValue('debug-fireRate', playerUpgrades.fireRate);
+    setSliderValue('debug-bulletSpeed', playerUpgrades.bulletSpeed);
+    setSliderValue('debug-lineCount', playerUpgrades.lineBulletCount);
+
+    // Chỉ số kỹ năng
+    setSliderValue('debug-bladeCount', skillUpgrades.bladeCount);
+    setSliderValue('debug-bladeDamage', skillUpgrades.bladeDamage);
+    setSliderValue('debug-swordLevel', skillUpgrades.swordLevel);
+    setSliderValue('debug-swordDamage', skillUpgrades.swordDamage);
+    setSliderValue('debug-fireCount', skillUpgrades.fireCount);
+    setSliderValue('debug-fireDamage', skillUpgrades.fireDamage);
+    setSliderValue('debug-iceCount', skillUpgrades.iceCount);
+    setSliderValue('debug-iceDamage', skillUpgrades.iceDamage);
+    setSliderValue('debug-thunderCount', skillUpgrades.thunderCount);
+    setSliderValue('debug-thunderDamage', skillUpgrades.thunderDamage);
+    // Trạng thái game
+    // XỬ LÝ RIÊNG: Gán giá trị trực tiếp cho ô nhập số Kill
+    document.getElementById('debug-kill').value = player.score;
+    // Các thanh trượt còn lại vẫn dùng helper function
+    setSliderValue('debug-wave', wave);
+    setSliderValue('debug-dayTime', (dayTime * 24).toFixed(1));
+}
+
+// Hàm áp dụng các thay đổi từ thanh kéo vào game
+function applyDebugChanges() {
+    // Chỉ số cơ bản
+    player.level = parseInt(document.getElementById('debug-level').value);
+    player.hearts = parseInt(document.getElementById('debug-hp').value);
+    player.mana = parseInt(document.getElementById('debug-mana').value);
+    player.energy = parseInt(document.getElementById('debug-energy').value);
+    player.speed = parseFloat(document.getElementById('debug-moveSpeed').value);
+    playerUpgrades.damageBoost = parseFloat(document.getElementById('debug-damage').value);
+    playerUpgrades.fireRate = parseInt(document.getElementById('debug-fireRate').value);
+    playerUpgrades.bulletSpeed = parseFloat(document.getElementById('debug-bulletSpeed').value);
+    playerUpgrades.lineBulletCount = parseInt(document.getElementById('debug-lineCount').value);
+
+    // Chỉ số kỹ năng
+    skillUpgrades.bladeCount = parseInt(document.getElementById('debug-bladeCount').value);
+    skillUpgrades.bladeDamage = parseFloat(document.getElementById('debug-bladeDamage').value);
+    skillUpgrades.swordLevel = parseInt(document.getElementById('debug-swordLevel').value);
+    skillUpgrades.swordDamage = parseFloat(document.getElementById('debug-swordDamage').value);
+    skillUpgrades.fireCount = parseInt(document.getElementById('debug-fireCount').value);
+    skillUpgrades.fireDamage = parseFloat(document.getElementById('debug-fireDamage').value);
+    skillUpgrades.iceCount = parseInt(document.getElementById('debug-iceCount').value);
+    skillUpgrades.iceDamage = parseFloat(document.getElementById('debug-iceDamage').value);
+    skillUpgrades.thunderCount = parseInt(document.getElementById('debug-thunderCount').value);
+    skillUpgrades.thunderDamage = parseFloat(document.getElementById('debug-thunderDamage').value);
+    // Trạng thái game
+    player.score = parseInt(document.getElementById('debug-kill').value);
+    wave = parseInt(document.getElementById('debug-wave').value);
+    dayTime = parseFloat(document.getElementById('debug-dayTime').value) / 24; // Chuyển đổi giờ (0-24) về lại dayTime (0-1)
+    updateWaveUI(); // Cập nhật hiển thị Wave trên giao diện chính
+    updateUI();
+    updateStatsOverlay();
+    showWarning('🔧 Các chỉ số đã được cập nhật!');
+}
+
+// Đợi HTML tải xong rồi mới gán các sự kiện
+document.addEventListener('DOMContentLoaded', function() {
+    
+    // Gán sự kiện nhấn phím '/'
+    document.addEventListener('keydown', (e) => {
+        if (e.key === '/') {
+            e.preventDefault();
+            toggleDebugMenu();
+        }
+    });
+
+    // Gán sự kiện cho các nút bấm
+    document.getElementById('applyDebugChanges').onclick = applyDebugChanges;
+    document.getElementById('closeDebugMenu').onclick = toggleDebugMenu;
+
+    // Gán sự kiện 'input' cho tất cả thanh kéo để cập nhật số hiển thị real-time
+    const sliders = document.querySelectorAll('#debugMenu input[type="range"]');
+    sliders.forEach(slider => {
+        const valueSpan = slider.nextElementSibling;
+        if (valueSpan) {
+            slider.addEventListener('input', () => {
+                // Nếu step là số thập phân (vd: 0.1), hiển thị 1 chữ số sau dấu phẩy
+                if (slider.step.includes('.')) {
+                    valueSpan.textContent = parseFloat(slider.value).toFixed(1);
+                } else {
+                    valueSpan.textContent = slider.value;
+                }
+            });
+        }
+    });
+});
+
 </script>
 <!-- 🌟 Popup khi lên cấp -->
 <div id="levelUpPopup">Level Up!</div>
@@ -8841,6 +9068,132 @@ FPS: --
   <div class="upgradeChoices" id="skillChoices"></div>
 </div>
 <div id="notificationContainer" aria-live="polite"></div>
+
+<!-- Bảng menu gỡ lỗi (Debug Menu) -->
+<div id="debugMenu" class="infoOverlay hidden">
+  <h3>🔧 Debug Menu (Phím /)</h3>
+  <div class="debug-grid">
+    
+    <label for="debug-level">Level:</label>
+    <div class="range-container">
+      <input type="range" id="debug-level" min="1" max="100" step="1">
+      <span class="range-value">1</span>
+    </div>
+    <label for="debug-hp">HP:</label>
+    <div class="range-container">
+      <input type="range" id="debug-hp" min="1" max="500" step="1">
+      <span class="range-value">10</span>
+    </div>
+    <label for="debug-mana">Mana:</label>
+    <div class="range-container">
+      <input type="range" id="debug-mana" min="0" max="500" step="1">
+      <span class="range-value">10</span>
+    </div>
+    <label for="debug-energy">Energy:</label>
+    <div class="range-container">
+      <input type="range" id="debug-energy" min="0" max="500" step="1">
+      <span class="range-value">10</span>
+    </div>
+    <label for="debug-moveSpeed">👟 Tốc độ chạy:</label>
+    <div class="range-container">
+      <input type="range" id="debug-moveSpeed" min="0.5" max="5" step="0.1">
+      <span class="range-value">1.0</span>
+    </div>
+    <label for="debug-damage">💥 Sát thương:</label>
+    <div class="range-container">
+      <input type="range" id="debug-damage" min="1" max="50" step="0.5">
+      <span class="range-value">1.0</span>
+    </div>
+    <label for="debug-fireRate">🔫 Hướng bắn:</label>
+    <div class="range-container">
+      <input type="range" id="debug-fireRate" min="1" max="21" step="1">
+      <span class="range-value">1</span>
+    </div>
+    <label for="debug-bulletSpeed">💨 Tốc độ đạn:</label>
+    <div class="range-container">
+      <input type="range" id="debug-bulletSpeed" min="0.5" max="10" step="0.1">
+      <span class="range-value">1.0</span>
+    </div>
+    <label for="debug-lineCount">🧨 Số lượng đạn:</label>
+    <div class="range-container">
+      <input type="range" id="debug-lineCount" min="1" max="10" step="1">
+      <span class="range-value">1</span>
+    </div>
+    <h4 class="debug-subtitle" colspan="2">Trạng thái Game</h4>
+
+    <label for="debug-kill">Số Kill:</label>
+    <input type="number" id="debug-kill" class="debug-input">
+
+    <label for="debug-wave">Wave:</label>
+    <div class="range-container">
+      <input type="range" id="debug-wave" min="1" max="100" step="1">
+      <span class="range-value">1</span>
+    </div>
+
+    <label for="debug-dayTime">Giờ trong ngày:</label>
+    <div class="range-container">
+      <input type="range" id="debug-dayTime" min="0" max="23.5" step="0.5">
+      <span class="range-value">6.0</span>
+    </div>
+    <h4 class="debug-subtitle" colspan="2">Nâng cấp Kỹ năng</h4>
+
+    <label for="debug-bladeCount">🔪 Số lượng đao:</label>
+    <div class="range-container">
+        <input type="range" id="debug-bladeCount" min="2" max="20" step="1">
+        <span class="range-value">2</span>
+    </div>
+    <label for="debug-bladeDamage">🔪 Sát thương đao:</label>
+    <div class="range-container">
+        <input type="range" id="debug-bladeDamage" min="1" max="50" step="0.5">
+        <span class="range-value">1.0</span>
+    </div>
+    <label for="debug-swordLevel">⚔️ Cấp mưa kiếm:</label>
+    <div class="range-container">
+        <input type="range" id="debug-swordLevel" min="1" max="10" step="1">
+        <span class="range-value">1</span>
+    </div>
+    <label for="debug-swordDamage">⚔️ Sát thương kiếm:</label>
+    <div class="range-container">
+        <input type="range" id="debug-swordDamage" min="1" max="50" step="0.5">
+        <span class="range-value">1.0</span>
+    </div>
+    <label for="debug-fireCount">🔥 Số lượng lửa:</label>
+    <div class="range-container">
+        <input type="range" id="debug-fireCount" min="2" max="10" step="1">
+        <span class="range-value">2</span>
+    </div>
+    <label for="debug-fireDamage">🔥 Sát thương lửa:</label>
+    <div class="range-container">
+        <input type="range" id="debug-fireDamage" min="1" max="50" step="0.5">
+        <span class="range-value">1.0</span>
+    </div>
+    <label for="debug-iceCount">❄️ Số lượng băng:</label>
+    <div class="range-container">
+        <input type="range" id="debug-iceCount" min="2" max="10" step="1">
+        <span class="range-value">2</span>
+    </div>
+    <label for="debug-iceDamage">❄️ Sát thương băng:</label>
+    <div class="range-container">
+        <input type="range" id="debug-iceDamage" min="1" max="50" step="0.5">
+        <span class="range-value">1.0</span>
+    </div>
+    <label for="debug-thunderCount">🔵 Số lượng lôi:</label>
+    <div class="range-container">
+        <input type="range" id="debug-thunderCount" min="2" max="6" step="1">
+        <span class="range-value">2</span>
+    </div>
+    <label for="debug-thunderDamage">🔵 Sát thương lôi:</label>
+    <div class="range-container">
+        <input type="range" id="debug-thunderDamage" min="1" max="50" step="0.5">
+        <span class="range-value">1.0</span>
+    </div>
+
+  </div>
+  <div class="debug-buttons">
+    <button id="applyDebugChanges">Áp dụng</button>
+    <button id="closeDebugMenu">Đóng</button>
+  </div>
+</div>
 
 </body>
 </html>
