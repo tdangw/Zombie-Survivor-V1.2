@@ -56,17 +56,47 @@
   left: 50%;
   transform: translateX(-50%);
   display: flex;
-  gap: 0.5rem; /* khoảng cách giữa các nút */
-  padding: 0.7rem 1.5rem; 
+  gap: 0.2rem; /* khoảng cách giữa các nút */
+  padding: 0.2rem 0.2rem; 
   background: rgb(0, 0, 0); /* nền trong suốt */
   border-radius: 0rem;
   width: 90%; /* tỷ lệ theo chiều ngang */
-  max-width: 57rem; /* giới hạn tối đa */
+  max-width: 60rem; /* giới hạn tối đa */
   justify-content: center;
   z-index: 1000;
   flex-wrap: wrap;
+  border-radius: 10px;
+}
+/* --- CSS đã được sửa lỗi cho Logo và thanh UI --- */
+
+/* Style chung cho cả hai logo (giờ đây được định vị tuyệt đối) */
+.ui-logo {
+  position: fixed; /* Định vị cố định trên màn hình */
+  top: 1.2rem;     /* Vị trí cách đỉnh */
+  color: var(--color-title);
+  font-family: 'Segoe UI', sans-serif;
+  font-weight: bold;
+  text-shadow: 0 0 4px var(--color-primary);
+  z-index: 1001;   /* Luôn nổi lên trên thanh UI */
+  pointer-events: none; /* Cho phép click xuyên qua logo */
 }
 
+/* Style riêng cho logo bên trái (Tên game) */
+.left-logo {
+  left: 18.1rem; /* Vị trí cách lề trái */
+  line-height: 1;
+  font-size: 0.8rem;
+  text-align: center;
+}
+
+/* Style riêng cho logo bên phải (Tên tác giả) */
+.right-logo {
+  right: 18.1rem; /* Vị trí cách lề phải */
+  line-height: 1;
+  font-size: 0.8rem;
+  text-align: center;
+}
+/* --- Kết thúc CSS cho Logo và thanh UI --- */
 /* 🔘 Nút trong UI (nhỏ gọn hơn nút mặc định) */
 #ui button {
   padding: 0.6rem 0.6rem;
@@ -127,8 +157,8 @@ button.active {
   min-width: 7.5rem;
   text-align: center;
   color: white;
-  font-size: 1rem;
-  padding: 0.3rem 0.6rem;
+  font-size: 0.8rem;
+  padding: 0.2rem 0.2rem;
 }
 
 /* 🔄 Nút restart đặc biệt */
@@ -154,8 +184,8 @@ button.active {
 /* ⏳ Hiển thị đồng hồ đếm wave */
 #waveTimerDisplay {
   position: fixed;
-  top: 12vh;
-  left: 47.5%;
+  top: 10vh;
+  left: 48.5%;
   transform: translateX(-50%);
   font-size: 1.2rem;
   color: gold;
@@ -638,8 +668,8 @@ button.active {
 }
 #waveNumberDisplay {
   position: fixed;
-  top: 16vh; /* giống waveTimerDisplay */
-  left: 47.5%; /* lệch phải so với thời gian ở 50% */
+  top: 14vh; /* giống waveTimerDisplay */
+  left: 48.5%; /* lệch phải so với thời gian ở 50% */
   transform: translateX(-50%);
   font-size: 1.1rem;
   color: #aefeff;
@@ -650,7 +680,7 @@ button.active {
 }
 #miniMap {
   position: fixed;
-  top: 5.3rem;
+  top: 6.5rem;
   right: 18rem;
   width: 150px;
   height: 150px;
@@ -687,8 +717,8 @@ button.active {
 .skill-item:hover::after { opacity: 1; }
 #bigBossRespawnDisplay {
     position: fixed;
-    top: 12vh;
-    left: 30vw;
+    top: 10vh;
+    left: 29.1vw;
     background: rgba(0, 0, 0, 0.6);
     border: 2px solid violet;
     border-radius: 0.5rem;
@@ -704,8 +734,8 @@ button.active {
 /* CSS cho bộ đếm ngày mới (có định vị) */
 #dayCounterDisplay {
     position: fixed;
-    top: 12vh; /* Cùng độ cao với BigBoss */
-    left: 24vw; /* Đặt ở vị trí bên phải của BigBoss */
+    top: 10vh; /* Cùng độ cao với BigBoss */
+    left: 23.2vw; /* Đặt ở vị trí bên phải của BigBoss */
     background: rgba(0, 0, 0, 0.6);
     border: 2px solid gold;
     border-radius: 0.5rem;
@@ -835,15 +865,15 @@ button.active {
 /* CSS cho bộ đếm Xu (Coin) */
 #coinCounterDisplay {
   position: fixed;
-  top: 12vh; /* Cùng độ cao với Wave */
-  left: 40.5%; /* Vị trí bên phải của Wave */
+  top: 10vh; /* Cùng độ cao với Wave */
+  left: 40.8%; /* Vị trí bên phải của Wave */
   border: 2px solid gold;
   border-radius: 0.5rem;
   padding: 0.3rem 0.6rem;
   transform: translateX(-50%);
   font-size: 0.8rem;
   color: gold; /* Màu vàng cho hợp với coin */
-  font-weight: bold;
+  font-weight: normal;
   text-shadow: 0 0 2px gold;
   z-index: 10;
   pointer-events: none;
@@ -851,14 +881,14 @@ button.active {
 /* Style chung cho hiển thị buff */
 .buff-display {
   position: fixed;
-  top: 12vh;
+  top: 10vh;
   transform: translateX(-50%);
   background: rgba(0, 0, 0, 0.6);
   border-radius: 0.5rem;
   padding: 0.4rem 0.4rem;
   font-family: 'Segoe UI', sans-serif;
   font-size: 0.8rem;
-  font-weight: bold;
+  font-weight: normal;
   color: white;
   border: 2px solid;
   z-index: 10;
@@ -869,17 +899,37 @@ button.active {
 }
 /* Vị trí riêng cho từng buff */
 #luckyBuffDisplay { 
-  left: 55%; /* Vị trí bên trái của Wave 68% */
+  left: 57%; /* Vị trí bên trái của Wave 68% */
   border-color: #22c55e; 
 }
 #powerBuffDisplay { 
-  left: 61.5%; /* Vị trí bên trái của Lucky */
+  left: 64.2%; /* Vị trí bên trái của Lucky */
   border-color: #ef4444; 
 }
 #crazyBuffDisplay { 
-  left: 68%; /* Vị trí bên trái của Power */
+  left: 71.3%; /* Vị trí bên trái của Power */
   border-color: #f59e0b; 
 }
+#expBuffDisplay { 
+  left: 78%; /* Vị trí bên trái của Power */
+  border-color: #ffeb3b; /* Màu vàng cho buff EXP */
+}
+#magnetBuffDisplay { 
+  top: 15vh; /* Cùng độ cao với Wave */
+  left: 57%; /* Vị trí bên phải của ExpUp */
+  border-color: #8b5cf6; /* Màu tím */
+}
+
+@keyframes pulsing-glow-magnet {
+  0% { box-shadow: 0 0 4px #8b5cf6, inset 0 0 4px #8b5cf6; }
+  50% { box-shadow: 0 0 14px #a78bfa, inset 0 0 14px #a78bfa; }
+  100% { box-shadow: 0 0 4px #8b5cf6, inset 0 0 4px #8b5cf6; }
+}
+
+#magnetBuffDisplay.active-glow {
+    animation: pulsing-glow-magnet 2s infinite;
+}
+
 /* --- BẮT ĐẦU: CSS cho hiệu ứng viền sáng --- */
 
 /* Định nghĩa animation cho buff Lucky (màu xanh lá) */
@@ -900,6 +950,16 @@ button.active {
   0% { box-shadow: 0 0 4px #f59e0b, inset 0 0 4px #f59e0b; }
   50% { box-shadow: 0 0 14px #fbbf24, inset 0 0 14px #fbbf24; }
   100% { box-shadow: 0 0 4px #f59e0b, inset 0 0 4px #f59e0b; }
+}
+@keyframes pulsing-glow-exp {
+  0% { box-shadow: 0 0 4px #ffeb3b, inset 0 0 4px #ffeb3b; }
+  50% { box-shadow: 0 0 14px #fff176, inset 0 0 14px #fff176; }
+  100% { box-shadow: 0 0 4px #ffeb3b, inset 0 0 4px #ffeb3b; }
+}
+
+/* Áp dụng animation khi có class 'active-glow' */
+#expBuffDisplay.active-glow {
+    animation: pulsing-glow-exp 2s infinite;
 }
 
 /* Áp dụng animation khi có class 'active-glow' */
@@ -1050,11 +1110,41 @@ button.active {
   font-weight: bold;
   width: fit-content;
 }
+/* BỔ SUNG: CSS để hiển thị tooltip cho thanh EXP/HP */
+#score-top[data-tooltip] {
+  position: relative;
+}
+#score-top[data-tooltip]::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  left: 50%;
+  top: 110%; /* Hiển thị ngay bên dưới thanh trạng thái */
+  transform: translateX(-50%);
+  
+  /* Các style khác cho tooltip */
+  min-width: 10rem;
+  white-space: pre-line;
+  padding: .55rem .7rem;
+  font-size: .8rem;
+  background: rgba(0,0,0,.85);
+  color: #e0f7fa;
+  border: 1px solid #00ffff;
+  border-radius: .5rem;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity .25s;
+  z-index: 10000;
+}
+#score-top:hover::after {
+  opacity: 1;
+}
 
 /* kết thúc style */
 </style>
 </head>
 <body>
+<div class="ui-logo left-logo">Zombie<br>Survivor</div>
+<div class="ui-logo right-logo">tdangw<br>Ver: 1.2</div>
 <div id="ui">
   <button id="autoBtn" data-tooltip="⚙️ Auto:
 - Tự động tấn công zombie gần nhất
@@ -1138,8 +1228,8 @@ button.active {
 - Tiêu hao: 5 ⚡">🐰 Pet</button>
 
   <div id="score">
-    <div id="score-top">Kill: 0 | ❤️: 10</div>
-    <div id="score-bottom">Level: 1 | ⚡: 0</div>
+    <div id="score-top" data-tooltip="Exp cấp tiếp theo: 300">Exp: 0000 |❤️: 0010</div>
+    <div id="score-bottom">Level: 0001 |⚡: 0000</div>
   </div>
 </div>
 <canvas id="game" width="960" height="720"></canvas>
@@ -1214,13 +1304,15 @@ button.active {
 
 <!-- ⏳ Đồng hồ đếm thời gian wave -->
 <div id="dayCounterDisplay">Ngày: 1</div>
-<div id="bigBossRespawnDisplay">BigBoss: --</div>
+<div id="bigBossRespawnDisplay">BigBoss: wait..</div>
 <div id="waveTimerDisplay">01:30:00</div>
 <div id="waveNumberDisplay">Wave: 1</div>
-<div id="coinCounterDisplay">🪙: ---</div>
-<div id="luckyBuffDisplay" class="buff-display">🍀 Lucky: <span>--</span>-</div>
-<div id="powerBuffDisplay" class="buff-display">🍁 Power: <span>--</span>-</div>
-<div id="crazyBuffDisplay" class="buff-display">🍂 Carzy: <span>--</span>-</div>
+<div id="coinCounterDisplay">🪙: 0000</div>
+<div id="luckyBuffDisplay" class="buff-display">🍀 LuckyUp: <span>--</span>-</div>
+<div id="powerBuffDisplay" class="buff-display">🍁 PowerUp: <span>--</span>-</div>
+<div id="crazyBuffDisplay" class="buff-display">🍂 CarzyUp: <span>--</span>-</div>
+<div id="expBuffDisplay" class="buff-display">🌿 ExpUp: <span>--</span>-</div>
+<div id="magnetBuffDisplay" class="buff-display">🧲 Magnet: <span>---</span></div>
 
 <!-- Mini map -->
 <canvas id="miniMap" width="150" height="150"></canvas>
@@ -1233,6 +1325,7 @@ const bossMusicId = 'music-boss';
 const luckyMusicId = 'sfx-lucky-loop';
 const powerMusicId = 'sfx-power-loop';
 const crazyMusicId = 'sfx-crazy-loop';
+const expMusicId = 'sfx-exp-loop';
 
 // Biến trạng thái
 let currentMusicState = '';
@@ -1280,16 +1373,20 @@ function playRandomNormalMusic() {
     currentMusicState = 'normal';
 }
 
-// Hàm cập nhật nhạc nền chính
+// Hàm cập nhật nhạc nền chính (ĐÃ SỬA LỖI)
 function updateMusic() {
     const now = Date.now();
     const bigBoss = zombies.find(z => z.active && z.isBigBoss);
     
-    // --- BẮT ĐẦU LOGIC MỚI: TÌM BUFF CÓ ƯU TIÊN CAO NHẤT ---
+    // Tìm buff có ưu tiên cao nhất (được nhặt sau cùng)
     let latestBuffEndTime = 0;
     let highestPriorityState = null;
 
-    // Kiểm tra từng buff và tìm ra buff nào được nhặt sau cùng (có endTime lớn nhất)
+    // SỬA LỖI: Sử dụng đúng tên biến expBuffEndTime
+    if (now < expBuffEndTime && expBuffEndTime > latestBuffEndTime) {
+        latestBuffEndTime = expBuffEndTime;
+        highestPriorityState = 'exp';
+    }
     if (now < crazyBuffEndTime && crazyBuffEndTime > latestBuffEndTime) {
         latestBuffEndTime = crazyBuffEndTime;
         highestPriorityState = 'crazy';
@@ -1302,24 +1399,21 @@ function updateMusic() {
         latestBuffEndTime = luckyBuffEndTime;
         highestPriorityState = 'lucky';
     }
-    // --- KẾT THÚC LOGIC MỚI ---
 
-    let desiredState = 'normal'; // Mặc định là nhạc thường
+    let desiredState = 'normal';
 
-    // Xác định trạng thái nhạc mong muốn theo mức độ ưu tiên đã tính toán
     if (highestPriorityState) {
-        desiredState = highestPriorityState; // Ưu tiên cao nhất là buff được nhặt sau cùng
+        desiredState = highestPriorityState;
     } else if (bigBoss) {
-        desiredState = 'boss';    // Ưu tiên thứ hai là boss
+        desiredState = 'boss';
     }
 
-    // Chỉ hành động khi trạng thái mong muốn khác với trạng thái hiện tại
     if (desiredState !== currentMusicState) {
         stopAllMusic();
-        
         let trackToPlayId = null;
 
-        if (desiredState === 'crazy') trackToPlayId = crazyMusicId;
+        if (desiredState === 'exp') trackToPlayId = expMusicId;
+        else if (desiredState === 'crazy') trackToPlayId = crazyMusicId;
         else if (desiredState === 'lucky') trackToPlayId = luckyMusicId;
         else if (desiredState === 'power') trackToPlayId = powerMusicId;
         else if (desiredState === 'boss') trackToPlayId = bossMusicId;
@@ -1330,7 +1424,6 @@ function updateMusic() {
             updateAllMusicVolume();
             trackElement.play().catch(e => console.error(`Lỗi phát nhạc cho trạng thái '${desiredState}':`, e));
         }
-        
         currentMusicState = desiredState;
     }
 }
@@ -1346,7 +1439,7 @@ let backgroundMushrooms = [];
 let backgroundRocks = [];
 let backgroundBalloons = [];
 let backgroundSeeds = [];
-let dayTime = 0.5; // 0.25 = 6h
+let dayTime = 0.25; // 0.25 = 6h
 let dayDirection = 1; // giữ lại cờ này như cũ
 const dayDuration = 600; // 1 vòng ngày đêm = 96 giây thực tế
 let lastUpdateTime = Date.now();
@@ -1367,6 +1460,20 @@ let powerBuffEndTime = 0;
 let isPowerBuffActive = false; // Biến cờ để tránh nhân/chia sát thương nhiều lần
 let crazyBuffEndTime = 0;
 let isCrazyBuffActive = false;
+let expBuffEndTime = 0;
+let magnetBuffEndTime = 0;
+let supplyDrops = []; // Mảng chứa các kiện hàng 🪂
+let morningDropTriggered = false; // Cờ để đảm bảo chỉ rơi 1 lần mỗi 9h sáng
+let morningDropTriggered12h = false;    // Cho 12h
+let morningDropTriggered15h = false;    // Cho 15h
+// Dữ liệu quản lý hiệu ứng đóm sáng cho các buff
+const buffEffects = {
+    power: { color: "#ef4444", active: false, angle: 0 },
+    crazy: { color: "#f59e0b", active: false, angle: 0 },
+    lucky: { color: "#22c55e", active: false, angle: 0 },
+    exp:   { color: "#ffeb3b", active: false, angle: 0 },
+    magnet: { color: "#8b5cf6", active: false, angle: 0 } // Thêm Magnet vào hiệu ứng đóm sáng
+};
 
 // Biến để lưu trữ lượng chỉ số cộng thêm từ buff, giúp gỡ bỏ chính xác
 let powerBuffDamageBonus = 0;
@@ -1402,7 +1509,7 @@ const zombieTypes = [
 ];
 let lastBigBossTimerUpdate = performance.now();
 let bigBossRespawnTimer = 0;
-const bigBossRespawnInterval = 3; // giây
+const bigBossRespawnInterval = 100; // Thời gian hồi sinh bigboss - giây
 
 // 🔫 Cấu hình bắn
 let autoBurstIndex = 0;
@@ -1426,6 +1533,9 @@ const player = {
   hearts: 10, energy: 0, mana: 0,
   coins: 0,
   level: 1, score: 0,
+  exp: 0,
+  currentLevelExp: 0, // THÊM MỚI: EXP của cấp hiện tại
+  requiredExp: 300,   // THÊM MỚI: EXP cần để lên cấp tiếp theo
   hitTimer: 0,
   name: "Player",
   isDying: false,
@@ -1738,6 +1848,12 @@ function playSound(id, volume = 1.0) { // Thêm tham số volume với giá tr�
         sound.play();
     }
 }
+// Hàm tiện ích để lấy một số nguyên ngẫu nhiên trong một khoảng
+function getRandomInt(min, max) {
+    min = Math.ceil(min);
+    max = Math.floor(max);
+    return Math.floor(Math.random() * (max - min + 1)) + min;
+}
 //💥 3. Hàm hỗ trợ tiện ích
 function distance(a, b) {
 return Math.hypot(a.x - b.x, a.y - b.y);}
@@ -1757,6 +1873,28 @@ function createFairyHitParticle(targetZombie) {
         color: 'rgba(100, 255, 150, 0.8)'   // Màu xanh lá cây bạc hà
 
     });
+}
+/**
+ * Tạo hiệu ứng "cổng dịch chuyển" để báo hiệu zombie sắp xuất hiện.
+ * @param {number} x - Tọa độ X.
+ * @param {number} y - Tọa độ Y.
+ */
+function createSpawnEffect(x, y) {
+    playSound('sfx-nuke-fall', 0.5); // Tạm dùng âm thanh bom rơi để cảnh báo
+    // Tạo 30 hạt bay ra từ tâm theo hình tròn
+    for (let i = 0; i < 30; i++) {
+        const angle = Math.random() * Math.PI * 2;
+        const speed = 2 + Math.random() * 2;
+        particles.push({
+            x: x, y: y,
+            vx: Math.cos(angle) * speed,
+            vy: Math.sin(angle) * speed,
+            size: Math.random() * 2 + 1,
+            color: 'rgba(139, 0, 139, 0.8)', // Màu tím đậm
+            alpha: 1,
+            fastFade: true
+        });
+    }
 }
 /**
  * Tạo một vụ nổ bằng các hạt (particle) tại một vị trí.
@@ -1889,32 +2027,73 @@ function updateAndDrawHealEffects() {
 }
 
 // 🎁 Hàm quản lý rơi vật phẩm khi zombie bị tiêu diệt
-function dropItem(x, y, isBoss = false, isMiniBoss = false) {
-  let dropChance = 0.3;
-  if (Date.now() < luckyBuffEndTime) {
-    dropChance = 0.8;
-  }
-  const dropCount = isBoss ? 5 : isMiniBoss ? 2 : (Math.random() < dropChance ? 1 : 0);
+function dropItem(x, y, isBoss = false, isBigBoss = false, isMiniBoss = false, isElite = false) {
+  
+    let finalDropCount = 0;
+    const isLuckyActive = Date.now() < luckyBuffEndTime;
 
-  for (let i = 0; i < dropCount; i++) {
-    const offsetX = (Math.random() - 0.5) * 30;
-    const offsetY = (Math.random() - 0.5) * 30;
-    const safeX = Math.min(worldWidth - wallThickness - 20, Math.max(wallThickness + 20, x + offsetX));
-    const safeY = Math.min(worldHeight - wallThickness - 20, Math.max(wallThickness + 20, y + offsetY));
-    
-    // Tỉ lệ rơi mới đã bao gồm Crazy
+    if (isBigBoss) {
+        // BigBoss rơi ngẫu nhiên từ 5 đến 10 vật phẩm
+        finalDropCount = getRandomInt(5, 10);
+    } else if (isBoss) {
+        // Boss thường rơi ngẫu nhiên từ 3 đến 5 vật phẩm
+        finalDropCount = getRandomInt(3, 5);
+    } else if (isMiniBoss) {
+        // MiniBoss rơi ngẫu nhiên từ 2 đến 3 vật phẩm
+        finalDropCount = getRandomInt(2, 3);
+    } else if (isElite) {
+        // Elite zombie rơi ngẫu nhiên từ 1 đến 2 vật phẩm
+        finalDropCount = getRandomInt(1, 2);
+    } else {
+        // Zombie thường giữ logic cũ: có tỉ lệ rơi 1 vật phẩm
+        let dropChance = 0.3; // 30% mặc định
+        if (isLuckyActive) {
+            dropChance = 0.8; // Tăng lên 80% khi có buff
+        }
+        if (Math.random() < dropChance) {
+            finalDropCount = 1;
+        }
+    }
+
+    // Nếu có buff Lucky, nhân đôi số lượng vật phẩm rơi ra
+    if (isLuckyActive) {
+        finalDropCount *= 2;
+    }
+
+    // Nếu không có vật phẩm nào rơi, kết thúc hàm
+    if (finalDropCount === 0) {
+        return;
+    }
+
+    // Vòng lặp tạo ra các vật phẩm dựa trên số lượng cuối cùng
+    for (let i = 0; i < finalDropCount; i++) {
+        const offsetX = (Math.random() - 0.5) * 30;
+        const offsetY = (Math.random() - 0.5) * 30;
+        const safeX = Math.min(worldWidth - wallThickness - 20, Math.max(wallThickness + 20, x + offsetX));
+        const safeY = Math.min(worldHeight - wallThickness - 20, Math.max(wallThickness + 20, y + offsetY));
+        
+    // --- BẮT ĐẦU CẬP NHẬT TỈ LỆ RƠI MỚI ---
     const itemRand = Math.random();
     let type = null;
+    // Tỉ lệ rơi vật phẩm mới:
+    // Mana, Energy: 30%
+    // Coin, HP: 10%
+    // Lucky, Power, Crazy, Exp: 3%
+    // Box, Magnet, Secret, ExpBonus: 2%
+if (itemRand < 0.005)      type = 'box';       // 0.5% (đã giảm)
+else if (itemRand < 0.01)  type = 'magnet';    // 0.5%
+else if (itemRand < 0.015) type = 'secret';    // 0.5%
+else if (itemRand < 0.025) type = 'expBonus';  // 1%
+else if (itemRand < 0.035) type = 'hp';        // 1%
+else if (itemRand < 0.055) type = 'coin';      // 2%
+else if (itemRand < 0.065) type = 'lucky';     // 1%
+else if (itemRand < 0.075) type = 'power';     // 1%
+else if (itemRand < 0.085) type = 'crazy';     // 1%
+else if (itemRand < 0.095) type = 'exp';       // 1%
+else if (itemRand < 0.10)  type = 'potion';    // 0.5% (vật phẩm mới)
+else if (itemRand < 0.55)  type = 'mana';      // 45% (0.10 -> 0.55)
+else                       type = 'energy';    // 45% (0.55 -> 1.00)
 
-    if (itemRand < 0.02)      type = 'box';    // 2%
-    else if (itemRand < 0.05) type = 'lucky';  // 3%
-    else if (itemRand < 0.08) type = 'power';  // 3%
-    else if (itemRand < 0.11) type = 'crazy';  // 3%
-    else if (itemRand < 0.21) type = 'coin';   // 10%
-    else if (itemRand < 0.31) type = 'hp';      // 10%
-    else if (itemRand < 0.65) type = 'mana';    // 34%
-    else                      type = 'energy';  // 35%
-    
     if (type) {
         items.push({ x: safeX, y: safeY, type, active: true });
     }
@@ -1947,7 +2126,61 @@ function openItemBox() {
   // 📢 Gộp thành một dòng thông báo duy nhất
   showWarning(`📦 Hộp quà: ${summary.join(', ')}`);
 }
+// Hàm xử lý khi nhặt vật phẩm Secret (phiên bản đã cập nhật tỉ lệ)
+function activateSecretItem(item) {
+    if (!item) return;
 
+    const rand = Math.random(); // Tạo một số ngẫu nhiên từ 0 đến 1
+
+    // --- BẮT ĐẦU LOGIC MỚI ---
+
+    // 50% cơ hội nhận được một buff ngẫu nhiên
+    if (rand < 0.50) {
+        const buffs = ['lucky', 'power', 'crazy', 'exp'];
+        const randomBuff = buffs[Math.floor(Math.random() * buffs.length)];
+        
+        showWarning(`❓: Nhận được buff ${randomBuff.toUpperCase()}!`);
+        switch (randomBuff) {
+            case 'lucky': luckyBuffEndTime = Date.now() + 45000; break;
+            case 'power': powerBuffEndTime = Date.now() + 45000; break;
+            case 'crazy': crazyBuffEndTime = Date.now() + 45000; break;
+            case 'exp':   expBuffEndTime = Date.now() + 45000; break;
+        }
+    } 
+    // 30% cơ hội tiếp theo (từ 0.50 đến 0.80) nhận được Coin hoặc EXP
+    else if (rand < 0.80) {
+        // Bên trong 30% này, chia 50/50 cho Coin hoặc EXP
+        if (Math.random() < 0.5) {
+            // Nhận được Coin
+            const coinBonus = Math.round((wave + player.level) * (Math.random() * 3 + 2));
+            player.coins += coinBonus;
+            showWarning(`❓: Nhận được ${coinBonus} 🪙!`);
+        } else {
+            // Nhận được EXP
+            activateExpBonusItem(); // Tái sử dụng hàm có sẵn để nhận EXP
+        }
+    } 
+    // 20% cơ hội còn lại (từ 0.80 đến 1.0) là ra Boss
+    else {
+        showWarning("Oh! No");
+        createSpawnEffect(item.x, item.y);
+        setTimeout(() => {
+            showWarning("❓: Một kẻ địch mạnh đã xuất hiện!");
+            spawnBoss(item.x, item.y);
+        }, 500); // Đợi 0.5 giây để tạo hiệu ứng
+    }
+    // --- KẾT THÚC LOGIC MỚI ---
+}
+
+// Hàm xử lý khi nhặt vật phẩm ExpBonus
+function activateExpBonusItem() {
+    // Lượng EXP thưởng = (wave + level) * (một số ngẫu nhiên từ 5 đến 10)
+    const bonus = Math.round((wave + player.level) * (Math.random() * 5 + 5));
+    player.exp += bonus;
+    player.currentLevelExp += bonus;
+    createExpGainEffect({x: player.x, y: player.y, radius: 20}, bonus);
+    showWarning(`🌟 Thưởng: +${bonus} EXP!`);
+}
 // 🔁 Bullet Pooling
 function getBullet() {
   return bulletPool.length ? bulletPool.pop() : { x: 0, y: 0, dx: 0, dy: 0, active: true };
@@ -2055,38 +2288,81 @@ function releaseZombie(z) {
 function killZombie(z) {
   if (z._killed || !z.active) return;
   z._killed = true;
-  playSound('sfx-zombie-die', 0.3); // Phát âm thanh khi zombie chết
-  spawnDyingEffect(z); // FIX: Add the dying effect
+  playSound('sfx-zombie-die', 0.3);
+  spawnDyingEffect(z);
 
-  // 🧟 Gỡ khỏi màn và cộng thống kê
   releaseZombie(z);
-  zombieKillCount++;
-
-  // 🎯 Cộng điểm khi tiêu diệt
+  
+  // Luôn cộng 1 vào 'score' để đếm kill và tính high score
   player.score++;
+  zombieKillCount = player.score;
 
-  // 📊 Đếm theo cấp (level 1-10)
-if (z.level && z.level >= 1 && z.level <= 10) {
+  // --- BẮT ĐẦU: LOGIC TÍNH EXP MỚI ---
+  let baseExp = 0;
+  
+  // 1. Tính EXP cơ bản theo loại zombie
+  if (z.isBigBoss)      baseExp = 1000;
+  else if (z.isBoss)    baseExp = 100;
+  else if (z.type === "miniBoss") baseExp = 10;
+  else if (z.isElite)   baseExp = 5;
+  else                  baseExp = 1;
+
+  // 2. Cộng thêm EXP dựa trên cấp độ của zombie
+  if (!z.isBigBoss && !z.isBoss) {
+      baseExp += (z.level - 1);
+  }
+
+  // 3. THAY ĐỔI: Cộng thêm EXP thưởng bằng đúng số wave (trừ 1)
+  // Công thức mới: Tăng 1 EXP thưởng cho mỗi wave đã qua.
+  const waveBonus = wave - 1;
+  let expGained = baseExp + waveBonus;
+
+  // 4. Áp dụng buff x1.5 EXP nếu có
+  if (Date.now() < expBuffEndTime) {
+      expGained = Math.round(expGained * 1.5);
+  }
+  
+  // 5. Cộng EXP vào cho người chơi
+  player.exp += expGained;
+  player.currentLevelExp += expGained;
+  createExpGainEffect(z, expGained);
+
+  // --- KẾT THÚC: LOGIC TÍNH EXP MỚI ---
+
+  // Phần thống kê và rơi vật phẩm giữ nguyên
+  if (z.level && z.level >= 1 && z.level <= 10) {
     zombieByLevel[z.level] = (zombieByLevel[z.level] || 0) + 1;
-}
-
-// 💀 Đếm miniBoss nếu là loại đó
-if (z.type === "miniBoss") {
+  }
+  if (z.type === "miniBoss") {
     zombieByLevel.miniBoss = (zombieByLevel.miniBoss || 0) + 1;
-}
-
-// 💀 Đếm boss chính (boss thường)
-if (z.isBoss && !z.isBigBoss) {
+  }
+  if (z.isBoss && !z.isBigBoss) {
     zombieByLevel.boss = (zombieByLevel.boss || 0) + 1;
-}
-
-// 💜 Đếm BigBoss riêng biệt
-if (z.isBigBoss) {
+  }
+  if (z.isBigBoss) {
     zombieByLevel.bigBoss = (zombieByLevel.bigBoss || 0) + 1;
+  }
+  
+  dropItem(z.x, z.y, z.isBoss, z.isBigBoss, z.type === "miniBoss", z.isElite);
 }
+/**
+ * Tính toán lượng EXP yêu cầu để đạt được cấp độ tiếp theo.
+ * @param {number} level - Cấp độ hiện tại của người chơi.
+ * @returns {number} Số EXP cần thiết để lên cấp.
+ */
+function calculateRequiredExp(level) {
+    // --- BẠN CÓ THỂ TÙY CHỈNH CÁC THAM SỐ NÀY ---
 
-  // 🎁 Rơi vật phẩm tại vị trí zombie
-  dropItem(z.x, z.y, z.isBoss, z.type === "miniBoss");
+    // Lượng EXP cơ bản cần cho level 1.
+    const baseExp = 300;
+
+    // Hệ số gia tăng. Con số này càng lớn, các cấp độ sau càng khó.
+    // 1.5 là một khởi đầu tốt, bạn có thể thử 1.6, 1.7... để làm game khó hơn.
+    const exponent = 1.5;
+
+    // Công thức tính: BaseEXP * (Level ^ Exponent)
+    // Math.floor dùng để làm tròn xuống, cho ra một con số đẹp.
+    return Math.floor(baseExp * Math.pow(level, exponent));
 }
 /**
  * Tính toán sát thương của zombie dựa trên loại, wave và level người chơi.
@@ -2769,16 +3045,21 @@ const bossColors = [
   "#00ffff"  // Xanh cyan ánh kim
 ];
 
-function spawnBoss() {
+function spawnBoss(spawnX, spawnY) { // Thêm 2 tham số vị trí
   const z = getZombie();
-   // 📍 ➊ Chọn vị trí ngẫu nhiên trong world
+
+  // NẾU CÓ VỊ TRÍ CỤ THỂ -> TẠO BOSS TẠI ĐÓ
+  if (spawnX !== undefined && spawnY !== undefined) {
+      z.x = spawnX;
+      z.y = spawnY;
+  } else {   // 📍 ➊ Chọn vị trí ngẫu nhiên trong world
   // (worldWidth / worldHeight đã dùng cho zombie thường)
   do {
     z.x = Math.random() * worldWidth;
     z.y = Math.random() * worldHeight;
     // 📏 ➋ Bảo đảm không “úp sọt” player
   } while (distance(z, player) < 250); // ≥ 250 px mới cho xuất hiện
-
+  }
   z.radius = 30;
   z.canHit = true;
   z.baseSpeed = 0.015 + Math.random() * 0.2; // Lưu tốc độ gốc | Tốc độ boss
@@ -2836,7 +3117,8 @@ z.lazerDuration = 0;
 //🧠 7. Cập nhật UI – chỉ DOM
 // 🧟 Hàm cập nhật Wave riêng biệt (dùng khi wave thay đổi)
 function updateWaveUI() {
-  document.getElementById("score-bottom").innerText = `Level: ${player.level} |⚡: ${player.energy}`;
+  document.getElementById("score-bottom").innerText = 
+  `Level: ${player.level.toString().padStart(4, '0')} |⚡: ${player.energy.toString().padStart(4, '0')}`;
   setTimeout(() => {
   document.getElementById("waveNumberDisplay").innerText = `Wave: ${wave}`;
 }, 1000); // ⏱️ hiển thị sau 1 giây
@@ -2845,86 +3127,134 @@ function updateWaveUI() {
 // DOM chỉ cập nhật khi giá trị thay đổi
 let lastScore = -1, lastLevel = -1, lastEnergy = -1, lastHearts = -1, lastHighScore = -1; let lastMana = -1;
 let lastBladeText = "", lastSwordText = "", lastFireText = "", lastIceText = "", lastFpsText = "", lastPetText = "";
-let lastDay = -1;
-lastCoins = -1;
+let lastDay = -1, lastCoins = -1, lastExp = -1;
+// Hàm cập nhật toàn bộ Giao diện Người dùng (UI), chỉ thực hiện khi có giá trị thay đổi để tối ưu hiệu suất
 function updateUI() {
-  // Cập nhật hiển thị ngày
-  if (currentDay !== lastDay) {
-    document.getElementById('dayCounterDisplay').innerText = `Ngày: ${currentDay}`;
-    lastDay = currentDay;
-  }
-  const highScore = parseInt(localStorage.getItem('highScore') || '0');
-  if (player.score > highScore) {
-    localStorage.setItem('highScore', player.score);
-}
-  if (
-    player.score !== lastScore ||
-    player.hearts !== lastHearts ||
-    highScore !== lastHighScore
-  ) {
-    lastScore = player.score;
-    lastHearts = player.hearts;
-    lastHighScore = highScore;
-    document.getElementById("score-top").innerText =`Kill: ${player.score} | ❤️: ${player.hearts}`;
-    document.getElementById("highScoreDisplay").innerText = `🏆 Kỷ lục: ${highScore}`;
-  }
-// Cập nhật hiển thị số xu
-  if (player.coins !== lastCoins) {
-    document.getElementById('coinCounterDisplay').innerText = `🪙: ${player.coins}`;
-    lastCoins = player.coins;
-  }
-  if (
-    player.level !== lastLevel ||
-    player.energy !== lastEnergy
-  ) {
-    lastLevel = player.level;
-    lastEnergy = player.energy;
-    updateWaveUI(); // 🧟 tách riêng hiển thị wave
-  }
-  if (player.mana !== lastMana) {
-  lastMana = player.mana;
-  document.getElementById("ui-mana").innerText = `💠 Mana: ${player.mana}`;
-}
-// Cập nhật hiển thị thời gian buff
-    const luckyDisplay = document.getElementById('luckyBuffDisplay');
-    if (Date.now() < luckyBuffEndTime) {
-        // Nếu buff đang hoạt động: hiển thị đếm ngược, làm rõ và thêm hiệu ứng
-        luckyDisplay.classList.remove('inactive');
-        luckyDisplay.classList.add('active-glow'); // <-- THÊM HIỆU ỨNG
-        const timeLeft = Math.ceil((luckyBuffEndTime - Date.now()) / 1000);
-        luckyDisplay.innerHTML = `🍀 Lucky: <span>${timeLeft}</span>s`;
-    } else {
-        // Nếu buff không hoạt động: hiển thị "--", làm mờ và xóa hiệu ứng
-        luckyDisplay.classList.add('inactive');
-        luckyDisplay.classList.remove('active-glow'); // <-- XÓA HIỆU ỨNG
-        luckyDisplay.innerHTML = `🍀 Lucky: <span>---</span>`;
+    // --- CẬP NHẬT CÁC THÔNG TIN PHỤ ---
+
+    // Cập nhật hiển thị ngày, chỉ khi ngày thay đổi
+    if (currentDay !== lastDay) {
+        document.getElementById('dayCounterDisplay').innerText = `Ngày: ${currentDay}`;
+        lastDay = currentDay;
     }
 
+    // Cập nhật Kỷ lục (High Score) bằng player.score (số kill)
+    const highScore = parseInt(localStorage.getItem('highScore') || '0');
+    if (player.score > highScore) {
+        localStorage.setItem('highScore', player.score);
+    }
+    // Chỉ cập nhật DOM khi giá trị high score thực sự thay đổi
+    if (highScore !== lastHighScore) {
+        document.getElementById("highScoreDisplay").innerText = `🏆 Kỷ lục: ${highScore}`;
+        lastHighScore = highScore;
+    }
+    
+    // --- CẬP NHẬT THANH TRẠNG THÁI CHÍNH ---
+
+    // Cập nhật hiển thị tiến trình EXP và HP
+    const scoreTopDiv = document.getElementById("score-top");
+    const required = player.requiredExp;
+    const current = player.currentLevelExp;
+    const remaining = required - current;
+
+    // Tạo chuỗi text mới cho EXP và HP
+    const newExpText = `Exp: ${current.toString().padStart(4, '0')} |❤️: ${player.hearts.toString().padStart(4, '0')}`;
+    // Chỉ cập nhật DOM nếu text thay đổi để tránh reflow không cần thiết
+    if (scoreTopDiv.innerText !== newExpText) {
+        scoreTopDiv.innerText = newExpText;
+    }
+    
+    // Cập nhật tooltip với lượng EXP còn lại
+    const newTooltip = `Exp cấp tiếp theo: ${remaining}`;
+    if (scoreTopDiv.dataset.tooltip !== newTooltip) {
+        scoreTopDiv.dataset.tooltip = newTooltip;
+    }
+
+    // Cập nhật hiển thị số xu
+    if (player.coins !== lastCoins) {
+        const formattedCoins = player.coins.toString().padStart(4, '0');
+        document.getElementById('coinCounterDisplay').innerText = `🪙: ${formattedCoins}`;
+        lastCoins = player.coins;
+    }
+
+    // Cập nhật hiển thị Level và Energy
+    if (player.level !== lastLevel || player.energy !== lastEnergy) {
+        lastLevel = player.level;
+        lastEnergy = player.energy;
+        updateWaveUI(); // Gọi hàm con để cập nhật text cho Level và Energy
+    }
+
+    // Cập nhật hiển thị Mana
+    if (player.mana !== lastMana) {
+        lastMana = player.mana;
+        document.getElementById("ui-mana").innerText = `💠 Mana: ${player.mana}`;
+    }
+
+    // --- CẬP NHẬT HIỂN THỊ CÁC BUFF TẠM THỜI ---
+    
+    // Cập nhật hiển thị cho buff Lucky
+    const luckyDisplay = document.getElementById('luckyBuffDisplay');
+    if (Date.now() < luckyBuffEndTime) {
+        luckyDisplay.classList.remove('inactive');
+        luckyDisplay.classList.add('active-glow');
+        const timeLeft = Math.ceil((luckyBuffEndTime - Date.now()) / 1000);
+        luckyDisplay.innerHTML = `🍀 LuckyUp: <span>${timeLeft}</span>s`; // Sửa tên
+    } else {
+        luckyDisplay.classList.add('inactive');
+        luckyDisplay.classList.remove('active-glow');
+        luckyDisplay.innerHTML = `🍀 LuckyUp: <span>---</span>`; // Sửa tên
+    }
+
+    // Cập nhật hiển thị cho buff Power
     const powerDisplay = document.getElementById('powerBuffDisplay');
     if (Date.now() < powerBuffEndTime) {
-        // Nếu buff đang hoạt động: hiển thị đếm ngược, làm rõ và thêm hiệu ứng
         powerDisplay.classList.remove('inactive');
-        powerDisplay.classList.add('active-glow'); // <-- THÊM HIỆU ỨNG
+        powerDisplay.classList.add('active-glow');
         const timeLeft = Math.ceil((powerBuffEndTime - Date.now()) / 1000);
-        powerDisplay.innerHTML = `🍁 Power: <span>${timeLeft}</span>s`;
+        powerDisplay.innerHTML = `🍁 PowerUp: <span>${timeLeft}</span>s`; // Sửa tên
     } else {
-        // Nếu buff không hoạt động: hiển thị "--", làm mờ và xóa hiệu ứng
         powerDisplay.classList.add('inactive');
-        powerDisplay.classList.remove('active-glow'); // <-- XÓA HIỆU ỨNG
-        powerDisplay.innerHTML = `🍁 Power: <span>---</span>`;
+        powerDisplay.classList.remove('active-glow');
+        powerDisplay.innerHTML = `🍁 PowerUp: <span>---</span>`; // Sửa tên
     }
-        const crazyDisplay = document.getElementById('crazyBuffDisplay');
+    
+    // Cập nhật hiển thị cho buff Crazy
+    const crazyDisplay = document.getElementById('crazyBuffDisplay');
     if (Date.now() < crazyBuffEndTime) {
         crazyDisplay.classList.remove('inactive');
         crazyDisplay.classList.add('active-glow');
         const timeLeft = Math.ceil((crazyBuffEndTime - Date.now()) / 1000);
-        crazyDisplay.innerHTML = `🍂 Crazy: <span>${timeLeft}</span>s`;
+        crazyDisplay.innerHTML = `🍂 CrazyUp: <span>${timeLeft}</span>s`; // Sửa tên
     } else {
         crazyDisplay.classList.add('inactive');
         crazyDisplay.classList.remove('active-glow');
-        crazyDisplay.innerHTML = `🍂 Crazy: <span>--</span>`;
+        crazyDisplay.innerHTML = `🍂 CrazyUp: <span>---</span>`; // Sửa tên
     }
 
+    // Cập nhật hiển thị cho buff ExpUp (MỚI)
+    const expDisplay = document.getElementById('expBuffDisplay');
+    if (Date.now() < expBuffEndTime) {
+        expDisplay.classList.remove('inactive');
+        expDisplay.classList.add('active-glow');
+        const timeLeft = Math.ceil((expBuffEndTime - Date.now()) / 1000);
+        expDisplay.innerHTML = `🌿 ExpUp: <span>${timeLeft}</span>s`;
+    } else {
+        expDisplay.classList.add('inactive');
+        expDisplay.classList.remove('active-glow');
+        expDisplay.innerHTML = `🌿 ExpUp: <span>---</span>`;
+    }
+    const magnetDisplay = document.getElementById('magnetBuffDisplay');
+    if (Date.now() < magnetBuffEndTime) {
+        magnetDisplay.classList.remove('inactive');
+        magnetDisplay.classList.add('active-glow');
+        const timeLeft = Math.ceil((magnetBuffEndTime - Date.now()) / 1000);
+        magnetDisplay.innerHTML = `🧲 Magnet: <span>${timeLeft}</span>s`;
+    } else {
+        magnetDisplay.classList.add('inactive');
+        magnetDisplay.classList.remove('active-glow');
+        magnetDisplay.innerHTML = `🧲 Magnet: <span>---</span>`;
+    }
+    
 }
 
 // 🧿 Tìm zombie còn sống gần player nhất 
@@ -3057,14 +3387,35 @@ function moveTowards(obj, target, spd) {
   obj.x += Math.cos(ang) * spd;
   obj.y += Math.sin(ang) * spd;
 }
-
+// Pet nhặt vật phẩm
 function collectLoot() {
   playSound('sfx-pickup', 0.5); // Phát âm thanh nhặt vật phẩm
-  const t = petRabbit.target;
+  const t = petRabbit.target; // 't' chính là đối tượng vật phẩm mà Pet nhặt được
   switch (t.type) {
     case "lucky": luckyBuffEndTime = Date.now() + 45000; queueLootPopup("🍀"); playSound('sfx-powerup', 0.8); break;
     case "power": powerBuffEndTime = Date.now() + 45000; queueLootPopup("🍁"); playSound('sfx-powerup', 0.8); break;
     case "crazy": crazyBuffEndTime = Date.now() + 45000; queueLootPopup("🍂"); playSound('sfx-powerup', 0.8); break;
+    case "exp": expBuffEndTime = Date.now() + 45000; queueLootPopup("🌿"); playSound('sfx-powerup', 0.8); break;
+    case "magnet":
+        // THÊM LOGIC MỚI: Chỉ kích hoạt buff nếu nó chưa hoạt động
+        if (Date.now() > magnetBuffEndTime) {
+            magnetBuffEndTime = Date.now() + 30000;
+            queueLootPopup("🧲");
+            playSound('sfx-powerup', 0.8);
+        }
+        // Nếu buff đang hoạt động, Pet nhặt thêm cũng không có tác dụng
+        break;
+    case "potion":
+    const baseHeal = getRandomInt(10, 20);
+    const bonusHeal = Math.round((player.level + wave) * 1.5);
+    const totalHeal = baseHeal + bonusHeal;
+    player.hearts += totalHeal;
+    createHealImpactEffect(player, totalHeal);
+    queueLootPopup("💊");
+    playSound('sfx-powerup', 0.8);
+    break;
+    case "secret":   activateSecretItem(t); queueLootPopup("❓"); playSound('sfx-powerup', 0.8); break;
+    case "expBonus": activateExpBonusItem(); queueLootPopup("🌟"); playSound('sfx-powerup', 0.8); break;
     case "coin":   player.coins++;  queueLootPopup("🪙"); playSound('sfx-pickup-coin', 0.5); break;
     case "energy": player.energy++; queueLootPopup("⚡"); break;
     case "mana":   player.mana++;   queueLootPopup("💠"); break;
@@ -3174,13 +3525,94 @@ function updateBlades() {
         }
     });
 }
+// --- BẮT ĐẦU: CÁC HÀM XỬ LÝ SỰ KIỆN TIẾP TẾ ---
+
+/** Tạo ra 3-5 kiện hàng 🪂 và cho chúng rơi từ trên trời xuống.
+ * Bắt đầu sự kiện thả hàng tiếp tế (phiên bản cải tiến).
+ */
+function triggerSupplyDrop() {
+    playSound('sfx-nuke-fall', 0.4);
+    showWarning("Hàng tiếp tế đang đến!");
+
+    const dropCount = getRandomInt(3, 7); // Số lượng kiện hàng tiếp tế ngẫu nhiên từ 3 đến 7
+
+    for (let i = 0; i < dropCount; i++) {
+        const drop = {
+            id: Date.now() + i, // Tạo một ID duy nhất
+            x: camera.x + Math.random() * canvas.width, // Rơi ngẫu nhiên trong chiều rộng màn hình
+            y: camera.y - 50, // Bắt đầu rơi từ phía trên màn hình
+            speedY: 1 + Math.random() * 0.5,
+            
+            // THÊM MỚI: Xác định vị trí "chạm đất" là gần cuối màn hình hiện tại
+            finalY: camera.y + canvas.height - (50 + Math.random() * 50)
+        };
+        
+        supplyDrops.push(drop);
+
+        // --- Bắt đầu logic tự quản lý vòng đời (giữ nguyên) ---
+        
+        const dropInterval = setInterval(() => {
+            const currentDrop = supplyDrops.find(d => d.id === drop.id);
+            if (!currentDrop) {
+                clearInterval(dropInterval);
+                return;
+            }
+
+            currentDrop.y += currentDrop.speedY;
+
+            // SỬA LỖI: Kiểm tra va chạm với 'finalY' thay vì 'worldHeight'
+            if (currentDrop.y > currentDrop.finalY) {
+                playSound('sfx-supply-drop-item', 0.5);
+
+                const resourceCount = getRandomInt(2, 10);
+                const resourceTypes = ['coin', 'hp', 'mana', 'energy'];
+                for (let j = 0; j < resourceCount; j++) {
+                    const type = resourceTypes[Math.floor(Math.random() * resourceTypes.length)];
+                    const offsetX = (Math.random() - 0.5) * 60;
+                    const offsetY = (Math.random() - 0.5) * 60;
+                    items.push({ x: currentDrop.x + offsetX, y: currentDrop.y + offsetY, type, active: true });
+                }
+                
+                supplyDrops = supplyDrops.filter(d => d.id !== currentDrop.id);
+                clearInterval(dropInterval);
+            }
+        }, 1000 / 60);
+    }
+}
+
+/**
+ * Vẽ các kiện hàng tiếp tế (🪂) ra màn hình.
+ */
+function drawSupplyDrops() {
+    ctx.font = "2rem serif";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+
+    supplyDrops.forEach(drop => {
+        ctx.fillText("🪂", drop.x, drop.y);
+    });
+}
+// --- KẾT THÚC: CÁC HÀM XỬ LÝ SỰ KIỆN TIẾP TẾ ---
 //🔄 8. Cập nhật logic game (Main loop logic)
 function update() {
+  const now = Date.now();
   if (!gameStarted || gameOver || isPaused) return; // không cập nhật khi chưa bắt đầu, game over hoặc tạm dừng
   if (player.isDying) {
       updateParticles(); // Chỉ cập nhật hiệu ứng hạt
       return; // Dừng các xử lý khác
   }
+    buffEffects.power.active = now < powerBuffEndTime;
+    buffEffects.crazy.active = now < crazyBuffEndTime;
+    buffEffects.lucky.active = now < luckyBuffEndTime;
+    buffEffects.exp.active   = now < expBuffEndTime;
+    buffEffects.magnet.active  = now < magnetBuffEndTime;
+    // Cập nhật góc quay cho các đóm sáng đang hoạt động
+    for (const buff in buffEffects) {
+        if (buffEffects[buff].active) {
+            buffEffects[buff].angle += 0.01;
+        }
+    }
+
   // Cập nhật hiệu ứng laze của người chơi
   playerLasers = playerLasers.filter(laser => {
       laser.life--;
@@ -3218,9 +3650,11 @@ const box = document.getElementById("bigBossRespawnDisplay");
 box.style.display = "block"; // Luôn hiển thị
 
 if (wave < 5) {
-    box.innerText = "BigBoss: --";
+    box.innerText = "BigBoss: wait..";
 } else {
-    box.innerText = existingBigBoss ? "BigBoss: living" : `BigBoss: ${bigBossRemain}s`;
+    box.innerText = existingBigBoss 
+  ? "BigBoss: living" 
+  : `BigBoss: -${bigBossRemain.toString().padStart(3, '0')}s-`;
 }
 // Xử lý kỹ năng Đao 🔪 tự tạo liên tục trong 30s
 if (swordActive) {
@@ -3780,6 +4214,26 @@ items.forEach(it => {
         crazyBuffEndTime = Date.now() + 45000; // 45 giây hiệu lực
         playSound('sfx-powerup', 0.8);
         break;
+      case 'exp': // <-- THÊM MỚI
+        expBuffEndTime = Date.now() + 45000;
+        playSound('sfx-powerup', 0.8);
+        break;
+      case 'magnet':
+        // THÊM LOGIC MỚI: Chỉ kích hoạt buff nếu nó chưa hoạt động
+        if (Date.now() > magnetBuffEndTime) {
+            magnetBuffEndTime = Date.now() + 30000;
+            playSound('sfx-powerup', 0.8);
+        }
+        // Nếu buff đang hoạt động, việc nhặt thêm sẽ không có tác dụng
+        break;
+      case 'secret':
+        activateSecretItem(it); // Gọi hàm xử lý riêng
+        playSound('sfx-powerup', 0.8);
+        break;
+      case 'expBonus':
+        activateExpBonusItem(); // Gọi hàm xử lý riêng
+        playSound('sfx-powerup', 0.8);
+        break;
       case 'coin': // <-- THÊM CASE MỚI NÀY
       playSound('sfx-pickup-coin', 0.5);
         player.coins += 1;
@@ -3797,6 +4251,15 @@ items.forEach(it => {
         player.hearts += 1;
          createHealImpactEffect(player, 1);
         break;
+      case 'potion': // <-- THÊM MỚI
+        const baseHeal = Math.floor(Math.random() * (20 - 10 + 1)) + 10;
+        const bonusHeal = Math.round((player.level + wave) * 1.5);
+        const totalHeal = baseHeal + bonusHeal;
+
+        player.hearts += totalHeal;
+        createHealImpactEffect(player, totalHeal);
+        showWarning(`💊 +${totalHeal} HP`);
+        break;
       case 'box':
         openItemBox(); // Mở hộp vật phẩm đặc biệt
         break;
@@ -3806,31 +4269,38 @@ items.forEach(it => {
 });
 
 items = items.filter(it => it.active);
-const requiredScore = player.level * 300; // Tăng level #Tăng cấp
-if (player.score >= requiredScore) {
-  playSound('sfx-level-up');
-  player.level++;
-  player.hearts += 1 + (UPGRADE_TIERS.hpBoost[playerUpgrades.hpBoost] || 0);
-  player.energy += 10; // 🎁 thưởng 2 năng lượng khi lên cấp
-  player.mana += 10;   // 💠 thưởng 2 mana khi lên cấp
-  playerUpgrades.damageBoost += 0.5; // 💥 Tăng sát thương mỗi level
-  showWarning("+0.5 💥");
+const requiredExp = calculateRequiredExp(player.level); // Yêu cầu EXP để lên cấp tăng cấp
+    // Sử dụng vòng lặp while để xử lý trường hợp lên nhiều cấp cùng lúc
+    while (player.currentLevelExp >= player.requiredExp) {
+        const leftoverExp = player.currentLevelExp - player.requiredExp;
+        
+        playSound('sfx-level-up');
+        player.level++;
+        player.hearts += 1 + (UPGRADE_TIERS.hpBoost[playerUpgrades.hpBoost] || 0);
+        player.energy += 10;
+        player.mana += 10;
+        playerUpgrades.damageBoost += 0.5;
+        showWarning("+0.5 💥");
 
-// 🪄 Hiển thị popup level
-  const popup = document.getElementById("levelUpPopup");
-  popup.style.animation = "none"; // reset nếu đã có hiệu ứng trước đó
-  void popup.offsetWidth;         // trigger reflow
-  popup.style.display = "block";
-  setTimeout(() => {
-    popup.style.display = "none";
-  }, 1200);
-  levelUpGlowTime = 60; // ~1s sáng vàng
-  showSkillLevelUpPopup(); // <-- gọi thêm popup chọn kỹ năng
+        const popup = document.getElementById("levelUpPopup");
+        popup.style.animation = "none";
+        void popup.offsetWidth;
+        popup.style.display = "block";
+        setTimeout(() => {
+            popup.style.display = "none";
+        }, 1200);
+        levelUpGlowTime = 60;
+        showSkillLevelUpPopup();
+        
+        if (player.level % 1 === 0) {
+            spawnBoss();
+        }
 
-// 🎯 Mỗi 2 cấp tạo boss
-  if (player.level % 1 === 0) {
-  spawnBoss();
-}}
+        player.currentLevelExp = leftoverExp;
+        player.requiredExp = calculateRequiredExp(player.level);
+    }
+    // --- KẾT THÚC: HỆ THỐNG LÊN CẤP MỚI ---
+
   updateExplosions(); // dùng object pooling thay splice
   // 🌊 Cập nhật các vòng nổ phụ
 extraShockwaves = extraShockwaves.filter(sw => {
@@ -4748,7 +5218,6 @@ if (fairyActive) {
     }
 }
     // --- Cập nhật hiệu ứng Power & Crazy ---
-    const now = Date.now();
     
     // Xử lý Power Buff
 const wasPowerBuffActive = isPowerBuffActive;
@@ -4795,6 +5264,25 @@ const wasPowerBuffActive = isPowerBuffActive;
         // Reset lại đối tượng bonus
         crazyBuffStats = { speed: 0, bulletSpeed: 0, damage: 0, lineBulletCount: 0, fireRate: 0 };
         updateStatsOverlay();
+    }
+// Logic hút vật phẩm của Nam châm
+    if (Date.now() < magnetBuffEndTime) {
+        const magnetRadius = 200; // Bán kính hút vật phẩm
+        // Danh sách các loại buff sẽ KHÔNG bị hút
+        const buffTypes = ['lucky', 'power', 'crazy', 'exp', 'magnet', 'secret', 'expBonus'];
+        // --- KẾT THÚC THAY ĐỔI ---
+
+        items.forEach(item => {
+            // THÊM ĐIỀU KIỆN: Nếu vật phẩm là một trong các loại buff, bỏ qua không hút
+            if (buffTypes.includes(item.type)) return;
+
+            if (item.active && distance(player, item) < magnetRadius) {
+                // Di chuyển vật phẩm về phía người chơi
+                const angle = Math.atan2(player.y - item.y, player.x - item.x);
+                item.x += Math.cos(angle) * 5; // Tốc độ hút
+                item.y += Math.sin(angle) * 5; // Tốc độ hút
+            }
+        });
     }
 
 updateParticles();
@@ -4948,18 +5436,42 @@ function drawMiniMap() {
   const ITEM_SIZE   = 1.2;   // chiều rộng/ cao dấu vật phẩm (px trên minimap)
   const ZOMBIE_SIZE = 2;     // zombie thường (ô vuông)
   const DOT_PLAYER  = 3;     // bán kính chấm player & boss/mini
-  // Draw items (energy, mana, hp)
-  for (let it of items) {
-    if (!it.active) continue;
-    switch (it.type) {
-      case "energy": miniCtx.fillStyle = "yellow"; break; // Màu vàng cho năng lượng
-      case "mana": miniCtx.fillStyle = "cyan"; break; // Màu xanh lam cho mana
-      case "hp": miniCtx.fillStyle = "lime"; break; // Màu xanh lá cây cho HP
-      case "box": miniCtx.fillStyle = "blue"; break; // Màu xanh dương cho hộp
-      default: miniCtx.fillStyle = "gray";
-    }
-    miniCtx.fillRect(it.x * scaleX - 0.5, it.y * scaleY - 0.5, 1, 1); // Vẽ kích thước vật phẩm trên minimap
+    // --- BẮT ĐẦU PHẦN BỔ SUNG ---
+  // Vẽ các hòm tiếp tế (🪂) đang rơi
+  supplyDrops.forEach(drop => {
+      const mapX = drop.x * scaleX;
+      const mapY = drop.y * scaleY;
+      
+      miniCtx.fillStyle = "cyan"; // Chấm màu xanh cyan cho dễ thấy
+      miniCtx.beginPath();
+      miniCtx.arc(mapX, mapY, 2, 0, Math.PI * 2); // Vẽ một chấm tròn
+      miniCtx.fill();
+  });
+  // --- KẾT THÚC PHẦN BỔ SUNG ---
+
+// Draw items (energy, mana, hp)
+for (let it of items) {
+  if (!it.active) continue;
+  switch (it.type) {
+    case "energy": miniCtx.fillStyle = "yellow"; break; // Màu vàng cho năng lượng
+    case "mana": miniCtx.fillStyle = "cyan"; break; // Màu xanh lam cho mana
+    case "hp": miniCtx.fillStyle = "lime"; break; // Màu xanh lá cây cho HP
+    case "box": miniCtx.fillStyle = "blue"; break; // Màu xanh dương cho hộp
+    
+    // Thêm các trường hợp mới cho các vật phẩm đặc biệt
+    case "lucky": miniCtx.fillStyle = "#22c55e"; break; // Màu xanh lá cây cho Lucky
+    case "power": miniCtx.fillStyle = "#ef4444"; break; // Màu đỏ cho Power
+    case "crazy": miniCtx.fillStyle = "#f59e0b"; break; // Màu vàng cam cho Crazy
+    case "exp": miniCtx.fillStyle = "#ffeb3b"; break; // Màu vàng cho Exp
+    case "magnet": miniCtx.fillStyle = "#8b5cf6"; break; // Màu tím cho Magnet
+    case "secret": miniCtx.fillStyle = "violet"; break; // Màu tím đậm cho Secret
+    case "expBonus": miniCtx.fillStyle = "gold"; break; // Màu vàng kim cho ExpBonus
+    case "potion": miniCtx.fillStyle = "red"; break; // Ví dụ: chấm màu đỏ
+
+    default: miniCtx.fillStyle = "gray";
   }
+  miniCtx.fillRect(it.x * scaleX - 0.5, it.y * scaleY - 0.5, 1, 1); // Vẽ kích thước vật phẩm trên minimap
+}
 // 💜 Vẽ clone trên minimap
 clones.forEach(clone => {
   const mapX = (clone.x / worldWidth) * miniMapCanvas.width;
@@ -5112,7 +5624,27 @@ function drawBloodOrb(ctx) {
         ctx.shadowBlur = 0;
     });
 }
+/**
+ * Tạo hiệu ứng chữ "+EXP" bay lên khi nhận được kinh nghiệm.
+ * @param {object} target - Đối tượng bị tiêu diệt (thường là zombie).
+ * @param {number} amount - Lượng EXP nhận được.
+ */
+function createExpGainEffect(target, amount) {
+    // Chỉ tạo hiệu ứng nếu nhận được EXP
+    if (amount <= 0) return;
 
+    // Tạo popup số EXP nhận được
+    const radius = target.radius || target.size || 15;
+    healEffects.push({
+        x: target.x + 36 + (Math.random() - 0.5) * 10, // Lệch sang phải
+        y: target.y - radius,
+        life: 120,
+        maxLife: 120,
+        text: `+${amount} exp`,
+        delay: 0,
+        color: 'gold' // Màu vàng
+    });
+}
 /**
  * Tạo hiệu ứng khi một mục tiêu được hồi máu.
  * @param {object} target - Đối tượng được hồi máu (thường là player).
@@ -5549,6 +6081,29 @@ function drawBackgroundByTime(ctx) {
 
     // 🕒 Tính giờ 0 - 23
     const hour = Math.floor(dayTime * 24) % 24;
+    // --- BẮT ĐẦU LOGIC MỚI ---
+// Nếu là 9h sáng và sự kiện chưa được kích hoạt trong ngày hôm nay
+if (hour === 9 && !morningDropTriggered) {
+    triggerSupplyDrop();
+    morningDropTriggered = true; // Đánh dấu đã kích hoạt 9h
+}
+// Nếu là 12h trưa và sự kiện chưa được kích hoạt trong ngày hôm nay
+else if (hour === 12 && !morningDropTriggered12h) {
+    triggerSupplyDrop();
+    morningDropTriggered12h = true; // Đánh dấu đã kích hoạt 12h
+}
+// Nếu là 15h chiều và sự kiện chưa được kích hoạt trong ngày hôm nay
+else if (hour === 15 && !morningDropTriggered15h) {
+    triggerSupplyDrop();
+    morningDropTriggered15h = true; // Đánh dấu đã kích hoạt 15h
+}
+// Reset lại các cờ khi qua ngày mới (ví dụ: lúc 0h)
+else if (hour === 0) {
+    morningDropTriggered = false;
+    morningDropTriggered12h = false;
+    morningDropTriggered15h = false;
+}
+    // --- KẾT THÚC LOGIC MỚI ---
 
     // 🌗 Xác định độ tối / sáng theo thực tế
     let darkness = 0;
@@ -5579,8 +6134,8 @@ function drawBackgroundByTime(ctx) {
     }
 
     // ☀️ / 🌙 Vẽ biểu tượng báo ngày / đêm
-    const iconX = 30;
-    const iconY = 100;
+    const iconX = 28;
+    const iconY = 82; // Vị trí mặt trời
 
     if (hour >= 6 && hour < 18) {
         ctx.beginPath();
@@ -6046,6 +6601,52 @@ function drawAuraLightBeams(ctx) {
     });
     ctx.restore();
 }
+// Hàm con để vẽ 2 đóm sáng cho một hiệu ứng buff cụ thể
+function drawSingleBuffEffect(effect) {
+    const centerX = player.x;
+    const centerY = player.y;
+    const baseRadius = player.size + 15;
+
+    // --- Tính toán vị trí và vẽ vệt sáng (Trail) ---
+    const trailLength = 5;
+    for (let i = 1; i <= trailLength; i++) {
+        const trailAngle = effect.angle - (0.05 * i);
+        const radiusX = baseRadius + Math.sin(trailAngle / 2) * 8;
+        const radiusY = baseRadius * 0.6;
+        const x1 = centerX + Math.cos(trailAngle) * radiusX;
+        const y1 = centerY + Math.sin(trailAngle * 2) * radiusY;
+        const x2 = centerX - Math.cos(trailAngle) * radiusX;
+        const y2 = centerY - Math.sin(trailAngle * 2) * radiusY;
+
+        const alpha = 1.0 - (i / trailLength);
+        ctx.globalAlpha = alpha * 0.5;
+        ctx.fillStyle = effect.color;
+
+        ctx.beginPath();
+        ctx.arc(x1, y1, 3 - i * 0.5, 0, Math.PI * 2); // Kích thước đóm sáng
+        ctx.fill();
+        ctx.beginPath();
+        ctx.arc(x2, y2, 3 - i * 0.5, 0, Math.PI * 2);
+        ctx.fill();
+    }
+
+    // --- Vẽ Đóm sáng chính ---
+    ctx.globalAlpha = 1.0;
+    const currentRadiusX = baseRadius + Math.sin(effect.angle / 2) * 8;
+    const currentRadiusY = baseRadius * 0.6;
+    const currentX1 = centerX + Math.cos(effect.angle) * currentRadiusX;
+    const currentY1 = centerY + Math.sin(effect.angle * 2) * currentRadiusY;
+    const currentX2 = centerX - Math.cos(effect.angle) * currentRadiusX;
+    const currentY2 = centerY - Math.sin(effect.angle * 2) * currentRadiusY;
+
+    ctx.fillStyle = effect.color;
+    ctx.beginPath();
+    ctx.arc(currentX1, currentY1, 3, 0, Math.PI * 2); // Kích thước đóm sáng
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(currentX2, currentY2, 3, 0, Math.PI * 2);
+    ctx.fill();
+}
 //🎨 9. Vẽ khung hình (draw canvas)
 function draw() {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -6069,6 +6670,19 @@ drawDiagonalStripes(ctx, worldWidth - wallThickness, 0, wallThickness, worldHeig
 // (MỚI) Vẽ Hào quang Hỗ trợ dưới chân
 drawSupportAura(ctx);
 drawAuraLightBeams(ctx);
+  // 1. VẼ CÁC ĐÓM SÁNG Ở PHÍA SAU PLAYER
+  for (const buff in buffEffects) {
+      const effect = buffEffects[buff];
+      // Kiểm tra xem đóm sáng có đang ở nửa trên quỹ đạo không
+      if (effect.active && Math.sin(effect.angle * 2) < 0) {
+          ctx.save();
+          ctx.shadowColor = effect.color;
+          ctx.shadowBlur = 15;
+          drawSingleBuffEffect(effect);
+          ctx.restore();
+      }
+  }
+  // 2. VẼ PLAYER
 if (!player.isDying && player.size > 0.1) {
 // 🎯 Vẽ tên người chơi trên đầu
 ctx.font = "1rem sans-serif";
@@ -6083,31 +6697,45 @@ ctx.fillText(player.name, player.x, player.y - player.size - 4); // Vẽ tên tr
     ctx.font = "bold 0.8rem sans-serif";
     ctx.textAlign = "center";
     
-    // Luôn vẽ CRAZY ở trên cùng nếu có
-    if (Date.now() < crazyBuffEndTime) {
-        ctx.fillStyle = "#f59e0b"; // Màu vàng cam
+    const now = Date.now();
+    const isExpActive = now < expBuffEndTime;
+    const isCrazyActive = now < crazyBuffEndTime;
+    const isPowerActive = now < powerBuffEndTime;
+    const isLuckyActive = now < luckyBuffEndTime;
+
+    // Vẽ ExpUp (MỚI)
+    if (isExpActive) {
+        ctx.fillStyle = "#ffeb3b"; // Màu vàng
         ctx.shadowColor = "white";
         ctx.shadowBlur = 5;
-        ctx.fillText("🍂 CRAZY", player.x, buffTextYOffset);
+        ctx.fillText("🌿 ExpUp", player.x, buffTextYOffset);
         buffTextYOffset -= 18; // Dịch chữ tiếp theo lên trên
     }
     
-    // Vẽ POWER ở giữa nếu có
-    if (Date.now() < powerBuffEndTime) {
-        ctx.fillStyle = "#ef4444"; // Màu đỏ
+    // Vẽ Crazy
+    if (isCrazyActive) {
+        ctx.fillStyle = "#f59e0b";
         ctx.shadowColor = "white";
         ctx.shadowBlur = 5;
-        ctx.fillText("🍁 POWER", player.x, buffTextYOffset);
-        buffTextYOffset -= 18; // Dịch chữ tiếp theo lên trên
+        ctx.fillText("🍂 CrazyUp", player.x, buffTextYOffset);
+        buffTextYOffset -= 18;
+    }
+    
+    // Vẽ Power
+    if (isPowerActive) {
+        ctx.fillStyle = "#ef4444";
+        ctx.shadowColor = "white";
+        ctx.shadowBlur = 5;
+        ctx.fillText("🍁 PowerUp", player.x, buffTextYOffset);
+        buffTextYOffset -= 18;
     }
 
-    // Vẽ LUCKY ở dưới cùng nếu có
-    if (Date.now() < luckyBuffEndTime) {
-        ctx.fillStyle = "#22c55e"; // Màu xanh lá
+    // Vẽ Lucky
+    if (isLuckyActive) {
+        ctx.fillStyle = "#22c55e";
         ctx.shadowColor = "white";
         ctx.shadowBlur = 5;
-        ctx.fillText("🍀 LUCKY", player.x, buffTextYOffset);
-        // Không cần dịch lên nữa vì đây là buff cuối cùng trong chuỗi
+        ctx.fillText("🍀 LuckyUp", player.x, buffTextYOffset);
     }
 
     ctx.shadowBlur = 0; // Reset hiệu ứng
@@ -6162,6 +6790,18 @@ if (disguiseActive) {
   ctx.strokeStyle = "rgba(0, 255, 255, 0.4)";
   ctx.shadowColor = "rgba(0, 255, 255, 0.25)";
   ctx.stroke();
+    // 3. VẼ CÁC ĐÓM SÁNG Ở PHÍA TRƯỚC PLAYER
+  for (const buff in buffEffects) {
+      const effect = buffEffects[buff];
+      // Kiểm tra xem đóm sáng có đang ở nửa dưới quỹ đạo không
+      if (effect.active && Math.sin(effect.angle * 2) >= 0) {
+          ctx.save();
+          ctx.shadowColor = effect.color;
+          ctx.shadowBlur = 15;
+          drawSingleBuffEffect(effect);
+          ctx.restore();
+      }
+  }
       // ✨✨ DỜI TOÀN BỘ KHỐI VẼ MẮT VÀ MIỆNG VÀO ĐÂY ✨✨
     if (zombies.length > 0) {
         const target = zombies.reduce((a, b) => distance(a, player) < distance(b, player) ? a : b);
@@ -6507,14 +7147,14 @@ function drawBigBoss(ctx, z) {
     horn(-30, -radius * 0.6, -1);
     horn(30, -radius * 0.6, 1);
 
-    // BIG + HP
+    // BOSS + HP
     ctx.font = `${radius * 0.3}px sans-serif`;
     ctx.fillStyle = "violet";
     ctx.textAlign = "center";
     ctx.strokeStyle = "#bb99ff";
     ctx.lineWidth = 2;
-    ctx.strokeText(`BIG ${hp}`, 0, -radius - 30);
-    ctx.fillText(`BIG ${hp}`, 0, -radius - 30);
+    ctx.strokeText(`BOSS ${hp}`, 0, -radius - 30); // Thêm viền chữ
+    ctx.fillText(`BOSS ${hp}`, 0, -radius - 30); // Tên boss
     // ✨ THÊM HIỆU ỨNG CẢNH BÁO KHI BOSS ĐANG NGẮM BẮN
     if (z.isChargingLazer) {
         // Vẽ một tia laser mỏng, mờ, màu đỏ từ boss đến người chơi
@@ -7494,35 +8134,73 @@ extraShockwaves.forEach(sw => {
 });
 
 drawItems();
+drawSupplyDrops();
 drawEffects();
+/**
+ * Vẽ các kiện hàng tiếp tế (🪂) ra màn hình.
+ */
+function drawSupplyDrops() {
+    ctx.font = "2rem serif";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.shadowColor = "black";
+    ctx.shadowBlur = 5;
 
+    supplyDrops.forEach(drop => {
+        ctx.fillText("🪂", drop.x, drop.y);
+    });
+
+    ctx.shadowBlur = 0; // Reset
+}
 // 🎨 Vẽ vật phẩm hiện có trên màn hình
 function drawItems() {
   items.forEach(it => {
     if (!it.active) return;
     ctx.save();
 
-// Cài đặt font chữ và căn chỉnh cho vật phẩm
+    // Cài đặt font chữ và căn chỉnh cho vật phẩm
     ctx.font = "0.9rem serif";
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
     let icon, color;
 
-// Chọn icon và màu sắc phù hợp với từng vật phẩm
+    // Chọn icon và màu sắc phù hợp với từng vật phẩm
     switch (it.type) {
+      case 'potion':
+        icon = "💊";
+        color = "red";
+        break;
       case 'lucky':
         icon = "🍀";
-        color = "#22c55e"; // Màu xanh lá
+        color = "#22c55e";
         break;
       case 'power':
         icon = "🍁";
-        color = "#ef4444"; // Màu đỏ
+        color = "#ef4444";
         break;
-      case 'crazy': // <-- BỔ SUNG CASE MỚI NÀY
+      case 'crazy': 
         icon = "🍂";
-        color = "#f59e0b"; // Màu vàng cam
+        color = "#f59e0b";
         break;
-      case 'coin': // <-- Thêm coin
+      case 'exp': 
+        icon = "🌿";
+        color = "#ffeb3b";
+        break;
+      // --- BẮT ĐẦU PHẦN BỔ SUNG ---
+      case 'magnet':
+        icon = "🧲";
+        color = "#8b5cf6"; // Màu tím
+        break;
+      case 'secret':
+        icon = "❓";
+        color = "#ffeb3b"; // Màu vàng
+        break;
+      case 'expBonus':
+        icon = "🌟";
+        color = "#ffeb3b"; // Màu vàng
+        break;
+      // --- KẾT THÚC PHẦN BỔ SUNG ---
+      case 'coin':
         icon = "🪙";
         color = "gold";
         break;
@@ -7542,14 +8220,16 @@ function drawItems() {
         icon = "📦";
         color = "#fff";
         break;
-}
+    }
 
-// Tạo hiệu ứng nhẹ (bóng đổ và chuyển động nhẹ nhàng)
-    ctx.shadowBlur = 3;
-    ctx.shadowColor = color;
-    ctx.fillStyle = color;
-    const bob = Math.sin(frame / 10 + it.x + it.y) * 2;
-    ctx.fillText(icon, it.x, it.y + bob);
+    // Tạo hiệu ứng nhẹ (bóng đổ và chuyển động nhẹ nhàng)
+    if (icon) {
+        ctx.shadowBlur = 3;
+        ctx.shadowColor = color;
+        ctx.fillStyle = color;
+        const bob = Math.sin(frame / 10 + it.x + it.y) * 2;
+        ctx.fillText(icon, it.x, it.y + bob);
+    }
     ctx.restore();
   });
 }
@@ -8175,12 +8855,6 @@ function startGame() {
   playRandomNormalMusic(); // Bắt đầu phát nhạc ngẫu nhiên
   showUpgradePopup();        // 🎁 Gọi nâng cấp trước
   pendingWave = wave;        // 🌊 Wave sẽ hiển thị sau khi nâng cấp xong
-//Test
-// 🚀 Tăng nhanh để test wave 20+
-/* wave = 5;
-  player.level = 1;
-  player.score = 3000; // Đảm bảo đủ điểm để không bị tụt cấp */
-//Test
 }
 // Hàm bật/tắt Shop
 function toggleShop() {
@@ -9943,7 +10617,7 @@ function populateDebugMenu() {
     };
 
     // Chỉ số cơ bản & game
-    document.getElementById('debug-kill').value = player.score;
+    document.getElementById('debug-exp').value = player.exp;
     setSliderValue('debug-wave', wave);
     setSliderValue('debug-dayTime', (dayTime * 24).toFixed(1));
     setSliderValue('debug-level', player.level);
@@ -9991,7 +10665,8 @@ function populateDebugMenu() {
 // HÀM CẬP NHẬT: Áp dụng các thay đổi
 function applyDebugChanges() {
     // Chỉ số cơ bản & game (giữ nguyên)
-    player.score = parseInt(document.getElementById('debug-kill').value);
+    player.exp = parseInt(document.getElementById('debug-exp').value);
+    player.currentLevelExp = player.exp;
     wave = parseInt(document.getElementById('debug-wave').value);
     dayTime = parseFloat(document.getElementById('debug-dayTime').value) / 24;
     updateWaveUI();
@@ -10337,8 +11012,8 @@ FPS: --
     </div>
     <h4 class="debug-subtitle" colspan="2">Trạng thái Game</h4>
 
-    <label for="debug-kill">Số Kill:</label>
-    <input type="number" id="debug-kill" class="debug-input">
+    <label for="debug-exp">Exp:</label>
+    <input type="number" id="debug-exp" class="custom-input" min="0" max="999999">
 
     <label for="debug-wave">Wave:</label>
     <div class="range-container">
@@ -10608,6 +11283,8 @@ FPS: --
 <audio id="sfx-wave-up" src="sounds/wave-up.mp3"></audio>
 <audio id="sfx-nuke-time" src="sounds/nuke-time.mp3"></audio>
 <audio id="sfx-crazy-loop" src="sounds/crazy-active-loop.mp3" loop></audio>
+<audio id="sfx-exp-loop" src="sounds/exp-active-loop.mp3" loop></audio>
+<audio id="sfx-supply-drop-item" src="sounds/supply-drop-item.mp3"></audio>
 
 </body>
 </html>

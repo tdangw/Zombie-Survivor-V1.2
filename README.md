@@ -143,3 +143,13 @@ Pooling đã tốt 👍 Giữ nguyên. Có thể thêm pool cho explosion, thund
 Particle, drawBackground, star... Đừng recreate array mỗi frame, chỉ update.
 Tách UI update riêng với canvas render UI DOM chỉ update khi thay đổi, đừng mỗi frame .innerText.
 Giảm check distance() khi list zombie quá nhiều Dùng broad phase: vùng camera trước, sau mới distance().
+
+- Thêm phím ESC để mở cài đặt âm thanh, menu game
+- Thêm ExpUp, magnet
+  Thêm rương vật phẩm hỗ trợ 9h 12h 15h
+  Thêm vật phẩm mới secret, expbonus
+  secret sẽ nhận ngẫu nhiên xu, exp, buff hoặc boss
+  Thay đổi hệ thống tính exp
+- Sắp làm: thêm đạn đặc biệt vào shop sẽ mua bằng xu
+- Thêm vật phẩm mới: Potion > tăng nhiều hp
+-
