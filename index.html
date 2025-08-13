@@ -899,24 +899,24 @@ button.active {
 }
 /* Vị trí riêng cho từng buff */
 #luckyBuffDisplay { 
-  left: 57%; /* Vị trí bên trái của Wave 68% */
+  left: 56.9%; /* Vị trí bên trái của Wave 68% */
   border-color: #22c55e; 
 }
 #powerBuffDisplay { 
-  left: 64.2%; /* Vị trí bên trái của Lucky */
+  left: 64.1%; /* Vị trí bên trái của Lucky */
   border-color: #ef4444; 
 }
 #crazyBuffDisplay { 
-  left: 71.3%; /* Vị trí bên trái của Power */
+  left: 71.2%; /* Vị trí bên trái của Power */
   border-color: #f59e0b; 
 }
 #expBuffDisplay { 
-  left: 78%; /* Vị trí bên trái của Power */
+  left: 77.9%; /* Vị trí bên trái của Power */
   border-color: #ffeb3b; /* Màu vàng cho buff EXP */
 }
 #magnetBuffDisplay { 
   top: 15vh; /* Cùng độ cao với Wave */
-  left: 57%; /* Vị trí bên phải của ExpUp */
+  left: 56.7%; 
   border-color: #8b5cf6; /* Màu tím */
 }
 
@@ -929,7 +929,11 @@ button.active {
 #magnetBuffDisplay.active-glow {
     animation: pulsing-glow-magnet 2s infinite;
 }
-
+#crazymadnesstimeBuffDisplay { 
+  top: 15vh; /* Cùng độ cao với Wave */
+  left: 65.7%; 
+  border-color: #0613c5; /* Màu xanh dương */
+}
 /* --- BẮT ĐẦU: CSS cho hiệu ứng viền sáng --- */
 
 /* Định nghĩa animation cho buff Lucky (màu xanh lá) */
@@ -1313,6 +1317,7 @@ button.active {
 <div id="crazyBuffDisplay" class="buff-display">🍂 CarzyUp: <span>--</span>-</div>
 <div id="expBuffDisplay" class="buff-display">🌿 ExpUp: <span>--</span>-</div>
 <div id="magnetBuffDisplay" class="buff-display">🧲 Magnet: <span>---</span></div>
+<div id="crazymadnesstimeBuffDisplay" class="buff-display">💢 CrazyMadnessTime: <span>---</span></div>
 
 <!-- Mini map -->
 <canvas id="miniMap" width="150" height="150"></canvas>
@@ -1854,6 +1859,44 @@ function getRandomInt(min, max) {
     max = Math.floor(max);
     return Math.floor(Math.random() * (max - min + 1)) + min;
 }
+// Hàm dọn dẹp các đối tượng không còn hoạt động
+function cleanupInactiveObjects() {
+  // Dọn dẹp zombies
+  for (let i = zombies.length - 1; i >= 0; i--) {
+    if (!zombies[i].active) {
+      zombies.splice(i, 1);
+    }
+  }
+
+  // Dọn dẹp đạn người chơi
+  for (let i = bullets.length - 1; i >= 0; i--) {
+    if (!bullets[i].active) {
+      bullets.splice(i, 1);
+    }
+  }
+
+  // Dọn dẹp đạn của địch
+  for (let i = enemyBullets.length - 1; i >= 0; i--) {
+    if (!enemyBullets[i].active) {
+      enemyBullets.splice(i, 1);
+    }
+  }
+
+  // Dọn dẹp vật phẩm
+  for (let i = items.length - 1; i >= 0; i--) {
+    if (!items[i].active) {
+      items.splice(i, 1);
+    }
+  }
+
+  // Dọn dẹp hiệu ứng nổ
+  for (let i = explosions.length - 1; i >= 0; i--) {
+    if (!explosions[i].active) {
+      explosions.splice(i, 1);
+    }
+  }
+}
+
 //💥 3. Hàm hỗ trợ tiện ích
 function distance(a, b) {
 return Math.hypot(a.x - b.x, a.y - b.y);}
@@ -3597,6 +3640,7 @@ function drawSupplyDrops() {
 function update() {
   const now = Date.now();
   if (!gameStarted || gameOver || isPaused) return; // không cập nhật khi chưa bắt đầu, game over hoặc tạm dừng
+  updateSkillCooldowns();
   if (player.isDying) {
       updateParticles(); // Chỉ cập nhật hiệu ứng hạt
       return; // Dừng các xử lý khác
@@ -4268,7 +4312,7 @@ items.forEach(it => {
   }
 });
 
-items = items.filter(it => it.active);
+// --- BẮT ĐẦU: HỆ THỐNG LÊN CẤP MỚI ---
 const requiredExp = calculateRequiredExp(player.level); // Yêu cầu EXP để lên cấp tăng cấp
     // Sử dụng vòng lặp while để xử lý trường hợp lên nhiều cấp cùng lúc
     while (player.currentLevelExp >= player.requiredExp) {
@@ -4303,11 +4347,14 @@ const requiredExp = calculateRequiredExp(player.level); // Yêu cầu EXP để 
 
   updateExplosions(); // dùng object pooling thay splice
   // 🌊 Cập nhật các vòng nổ phụ
-extraShockwaves = extraShockwaves.filter(sw => {
-  sw.radius += 8; // tăng bán kính mỗi frame
-  sw.alpha -= 0.012; // giảm độ mờ dần
-  return sw.alpha > 0;
-});
+for (let i = extraShockwaves.length - 1; i >= 0; i--) {
+  const sw = extraShockwaves[i];
+  sw.radius += 8;
+  sw.alpha -= 0.012;
+  if (sw.alpha <= 0) {
+    extraShockwaves.splice(i, 1); // Xóa trực tiếp
+  }
+}
 
 if (levelUpGlowTime > 0) levelUpGlowTime--;
 // 🎯 Cập nhật bullets – dùng object pooling thay vì splice
@@ -4408,7 +4455,6 @@ if (!b.piercing) {
 }
 }
 }
-  bullets = bullets.filter(b => b.active);
 }
 
 function updateEnemyBullets() {
@@ -4461,8 +4507,6 @@ if (b.hit || outOfBounds) {
       releaseEnemyBullet(b);
 }
 }
-// Chỉ giữ lại các đạn còn active
-  enemyBullets = enemyBullets.filter(b => b.active);
 }
 // 💥 Cập nhật hiệu ứng nổ – thay thế splice bằng release
 function updateExplosions() {
@@ -4476,21 +4520,25 @@ function updateExplosions() {
   });
 }
 // 💥 Xử lý các vòng nổ lan (dùng cho bom hạt nhân)
-expandingExplosions = expandingExplosions.filter(exp => {
+for (let i = expandingExplosions.length - 1; i >= 0; i--) {
+  const exp = expandingExplosions[i];
   const prevRadius = exp.radius;
   exp.radius += exp.maxRadius / exp.duration;
   exp.duration--;
-// 💀 Gây sát thương khi vòng vừa chạm tới zombie
+
   zombies.forEach(z => {
     const dist = distance(exp, z);
     if (z.active && dist >= prevRadius && dist < exp.radius && !exp.hitSet.has(z)) {
-    dealDamageToZombie(z, exp.damage);
-    exp.hitSet.add(z);
+      dealDamageToZombie(z, exp.damage);
+      exp.hitSet.add(z);
     }
+  });
+
+  if (exp.duration <= 0) {
+    expandingExplosions.splice(i, 1); // Xóa trực tiếp
   }
-);
-    return exp.duration > 0;
-});
+}
+
 // Kỹ năng vệ tinh lazer
 if (satelliteActive) {
   // --- 1. KIỂM TRA HẾT HẠN KỸ NĂNG ---
@@ -4792,10 +4840,14 @@ if (clonesActive) {
     }
 }
 // Cập nhật và xóa các tia lazer đã hết hạn
-activeCloneLasers = activeCloneLasers.filter(laser => {
-    laser.life--;
-    return laser.life > 0;
-});
+for (let i = activeCloneLasers.length - 1; i >= 0; i--) {
+  const laser = activeCloneLasers[i];
+  laser.life--;
+  if (laser.life <= 0) {
+    activeCloneLasers.splice(i, 1);
+  }
+}
+
 // === Kỹ năng "🩸 Quả Cầu Hấp Huyết"
 if (bloodOrbActive) {
     if (Date.now() > bloodOrbEndTime) {
@@ -5287,16 +5339,31 @@ const wasPowerBuffActive = isPowerBuffActive;
 
 updateParticles();
 updatePet();   // 🐰 xử lý pet mỗi frame
-zombies = zombies.filter(z => z.active);
 zombies.forEach(z => updateBigBossLazer(z, globalDeltaTime));
+cleanupInactiveObjects();
   updateUI();
   updateStatsOverlay();
   updateMusic(); // Gọi hàm kiểm tra nhạc trong mỗi khung hình
-    const skillsOverlay = document.getElementById('skillsOverlay');
-  if (skillsOverlay && !skillsOverlay.classList.contains('hidden')) {
-    updateSkillsList();
-  }
   updateEnemyBullets();
+}
+function updateSkillCooldowns() {
+    const listItems = document.querySelectorAll('#skills-list .skill-item');
+    const now = Date.now();
+
+    activeSkills.forEach((skill, index) => {
+        const item = listItems[index];
+        if (!item || !skill.endTime) return;
+
+        if (now < skill.endTime) {
+            const remain = Math.ceil((skill.endTime - now) / 1000);
+            item.innerHTML = `<span class="skill-icon">${skill.icon}</span> ${skill.name} - ${remain}s`;
+            item.classList.add('active');
+        } else {
+            skill.endTime = null; // Reset khi hết giờ
+            item.innerHTML = `<span class="skill-icon">${skill.icon}</span> ${skill.name} - ${skill.manaCost}💠`;
+            item.classList.remove('active');
+        }
+    });
 }
 // Lazer boss
 function updateBigBossLazer(z, deltaTime) {
@@ -8824,7 +8891,7 @@ if (fpsText !== lastFpsText) {
 if (frame % 60 === 0 && gameStarted) {
 // Giới hạn zombie tối đa là 200 - Số lượng zombie hiện tại
 if (zombies.length < 200) {
-    const spawnCount = Math.min(1, 200 - zombies.length);
+    const spawnCount = Math.min(50, 200 - zombies.length);
     for (let i = 0; i < spawnCount; i++) {
     spawnZombie();
 }
@@ -9726,36 +9793,23 @@ function updateSkillsList() {
     const list = document.getElementById('skills-list');
     list.innerHTML = ''; // Xóa các item cũ
     
-    // Tạo lại các item trong danh sách kỹ năng
+    // Chỉ tạo lại các item trong danh sách kỹ năng
     activeSkills.forEach(skill => {
         const div = document.createElement('div');
         div.className = 'skill-item';
         div.dataset.tooltip = buildSkillTooltip(skill);
 
-        const now = Date.now();
+        // Luôn hiển thị thông tin cơ bản
+        div.innerHTML = `<span class="skill-icon">${skill.icon}</span> ${skill.name} - ${skill.manaCost}💠`;
+
+        // Gán sự kiện click trực tiếp
+        div.onclick = () => {
+            // Kiểm tra điều kiện ngay khi click
+            if (player.mana >= skill.manaCost && (!skill.endTime || Date.now() > skill.endTime)) {
+                activateSkill(skill);
+            }
+        };
         
-        // Xử lý khi kỹ năng đang trong thời gian hồi chiêu
-        if (skill.endTime && now < skill.endTime) {
-            const remain = Math.ceil((skill.endTime - now) / 1000);
-            div.innerHTML = `<span class="skill-icon">${skill.icon}</span> ${skill.name} - ${remain}s`;
-            div.classList.add('active');
-            div.style.pointerEvents = 'none'; // Vô hiệu hóa click khi đang hồi chiêu
-        } else {
-            // Xử lý khi kỹ năng đã sẵn sàng
-            if (skill.endTime) {
-                skill.endTime = null;
-            }
-            const canUse = player.mana >= skill.manaCost;
-            div.innerHTML = `<span class="skill-icon">${skill.icon}</span> ${skill.name} - ${skill.manaCost}💠`;
-            
-            if (canUse) {
-                // Nếu đủ mana, gán sự kiện click (sử dụng onmousedown để tránh lỗi)
-                div.onmousedown = () => activateSkill(skill);
-            } else {
-                // Nếu không đủ mana, chỉ làm mờ đi để vẫn xem được tooltip
-                div.style.opacity = 0.5;
-            }
-        }
         list.appendChild(div);
     });
 
@@ -9777,6 +9831,7 @@ function updateSkillsList() {
         });
     });
 }
+
 // 🧪 Test: Thêm kỹ năng bất kỳ bằng phím số 1–9, 0
 document.addEventListener("keydown", (e) => {
     // THÊM DÒNG KIỂM TRA:
