@@ -3424,6 +3424,328 @@ function updatePet() {
     }
 }
 
+/* ───────────────────────────────────────
+   🚀 CẬP NHẬT TÊN LỬA – GỌI MỖI FRAME
+   ─────────────────────────────────────── */
+function updateMissiles() {
+  // Lặp ngược để xóa phần tử an toàn
+  for (let i = missiles.length - 1; i >= 0; i--) {
+    const m = missiles[i];
+    let shouldRemove = false; // Cờ để quyết định có xóa tên lửa không
+
+    // --- Giai đoạn chờ (delay) ---
+    if (m.state === "delay") {
+      m.delay--;
+      if (m.delay <= 0) {
+        m.state = "fly";
+      }
+      continue; 
+    }
+
+    // --- Cập nhật di chuyển & dẫn hướng ---
+    if (m.target && m.target.active) {
+      const desiredAngle = Math.atan2(m.target.y - m.y, m.target.x - m.x);
+      const currentAngle = Math.atan2(m.dy, m.dx);
+      const turnRate = 0.05;
+      let delta = desiredAngle - currentAngle;
+      if (delta > Math.PI) delta -= 2 * Math.PI;
+      if (delta < -Math.PI) delta += 2 * Math.PI;
+      const newAngle = currentAngle + Math.sign(delta) * Math.min(turnRate, Math.abs(delta));
+      const speed = 2.5;
+      m.dx = Math.cos(newAngle) * speed;
+      m.dy = Math.sin(newAngle) * speed;
+    }
+    m.x += m.dx;
+    m.y += m.dy;
+
+    // --- Gây sát thương xuyên trên đường bay ---
+    zombies.forEach(z => {
+      if (z.active && !m.hitSet.has(z) && distance(m, z) < 20) {
+        if (!z.missileHitCooldown || Date.now() > z.missileHitCooldown) {
+          dealDamageToZombie(z, m.damage);
+          m.hitSet.add(z);
+          z.missileHitCooldown = Date.now() + 100;
+        }
+      }
+    });
+
+    // --- Kiểm tra điều kiện để nổ ---
+    const travelDistance = distance({ x: m.startX, y: m.startY }, m);
+    const hitTarget = m.target && m.target.active && distance(m, m.target) < 25;
+
+    if (travelDistance > 360 || hitTarget) {
+      // Kích hoạt vụ nổ kép
+      zombies.forEach(z => {
+        if (z.active && distance(m, z) < 120) {
+          dealDamageToZombie(z, m.damage);
+        }
+      });
+      createParticleExplosion(m.x, m.y, 50, 'fire');
+      setTimeout(() => {
+        zombies.forEach(z => {
+          if (z.active && distance(m, z) < 120) {
+            dealDamageToZombie(z, m.damage * 0.5);
+          }
+        });
+        const secondaryExplosion = getExplosion(m.x, m.y);
+        secondaryExplosion.life = 15;
+        explosions.push(secondaryExplosion);
+      }, 200);
+      shouldRemove = true;
+    }
+
+    if (shouldRemove) {
+      missiles.splice(i, 1);
+    }
+  }
+}
+
+/* ================================
+   1) LƯỚI KHÔNG GIAN (SPATIAL GRID)
+   - Mục tiêu: chỉ xét đối tượng "ở gần" hố đen.
+   - KHÔNG tạo mảng mới mỗi frame -> tránh GC.
+   - Với world 3000x2000, cell 200 là hợp lý (có thể chỉnh).
+================================== */
+
+const WORLD_W = 3000;
+const WORLD_H = 2000;
+const CELL_SIZE = 200; // nên >= pullRadius lớn nhất để giảm số cell kiểm tra
+
+const GRID_COLS = Math.ceil(WORLD_W / CELL_SIZE);
+const GRID_ROWS = Math.ceil(WORLD_H / CELL_SIZE);
+const GRID_COUNT = GRID_COLS * GRID_ROWS;
+
+// Mảng cell tái sử dụng cho mỗi frame (mỗi cell là 1 mảng reuse)
+const gridZ = new Array(GRID_COUNT);
+const gridB = new Array(GRID_COUNT);
+for (let i = 0; i < GRID_COUNT; i++) {
+    gridZ[i] = [];
+    gridB[i] = [];
+}
+
+// Scratch array dùng tạm cho mỗi hố đen (không cấp phát mới)
+const scratchCells = [];
+
+// Giới hạn & tính chỉ số cell từ toạ độ
+function clamp(v, min, max) {
+    return v < min ? min : (v > max ? max : v);
+}
+function cellIndexFromXY(x, y) {
+    // clamp để tránh vượt ngoài biên
+    x = clamp(x, 0, WORLD_W - 1);
+    y = clamp(y, 0, WORLD_H - 1);
+    const col = (x / CELL_SIZE) | 0;
+    const row = (y / CELL_SIZE) | 0;
+    return row * GRID_COLS + col;
+}
+
+// Liệt kê các cell mà một hình tròn (tâm cx,cy; bán kính r) cắt qua
+// Ghi thẳng vào 'out' (scratchCells), không return mảng mới -> tránh GC.
+function cellsForCircle(cx, cy, r, out) {
+    let minCol = ((cx - r) / CELL_SIZE) | 0;
+    let maxCol = ((cx + r) / CELL_SIZE) | 0;
+    let minRow = ((cy - r) / CELL_SIZE) | 0;
+    let maxRow = ((cy + r) / CELL_SIZE) | 0;
+
+    if (minCol < 0) minCol = 0;
+    if (minRow < 0) minRow = 0;
+    if (maxCol >= GRID_COLS) maxCol = GRID_COLS - 1;
+    if (maxRow >= GRID_ROWS) maxRow = GRID_ROWS - 1;
+
+    // Ghi trực tiếp chỉ số cell vào 'out'
+    let k = 0;
+    for (let r0 = minRow; r0 <= maxRow; r0++) {
+        const base = r0 * GRID_COLS;
+        for (let c = minCol; c <= maxCol; c++) {
+            out[k++] = base + c;
+        }
+    }
+    out.length = k; // cắt chiều dài về đúng số ô
+}
+
+/* ============================================
+   2) CẬP NHẬT CHỈ MỤC KHÔNG GIAN CHO ENTITIES
+   - Gọi MỘT LẦN trước khi update hố đen mỗi frame.
+   - Không tạo mảng mới: chỉ reset length = 0.
+============================================= */
+
+function clearSpatialGrid() {
+    // GRID_COUNT nhỏ (~150) nên việc reset rất rẻ
+    for (let i = 0; i < GRID_COUNT; i++) {
+        gridZ[i].length = 0;
+        gridB[i].length = 0;
+    }
+}
+
+function updateSpatialIndex() {
+    clearSpatialGrid();
+
+    // Ghi zombie vào lưới
+    for (let i = 0; i < zombies.length; i++) {
+        const z = zombies[i];
+        if (!z.active) continue;
+        const idx = cellIndexFromXY(z.x, z.y);
+        gridZ[idx].push(z);
+    }
+
+    // Ghi đạn địch vào lưới
+    for (let i = 0; i < enemyBullets.length; i++) {
+        const b = enemyBullets[i];
+        if (!b.active) continue;
+        const idx = cellIndexFromXY(b.x, b.y);
+        gridB[idx].push(b);
+    }
+}
+
+/* ============================================================
+   3) updateBlackHoles TỐI ƯU + GIỮ "CẢM GIÁC" BẢN CŨ
+   - Bản cũ vô tình áp lực hút & damage 2 lần/frame.
+   - Để GIỮ CẢM GIÁC: nhân hệ số bù, không nhân đôi vòng lặp.
+   - Không dùng .filter(); duyệt ngược + splice để xoá.
+   - Chỉ xét entity trong các cell giao với pullRadius.
+   - Hạn chế Math.sqrt: chỉ sqrt khi chắc chắn trong phạm vi.
+   - Tránh atan2/cos/sin: dùng vector chuẩn hoá (dx,dy)/d.
+============================================================= */
+
+// Chế độ “giữ cảm giác” bản cũ:
+const FEEL_COMPAT = true;
+
+// Giữ cảm giác hút:
+// - Zombie: trước đây hút 2 lần/frame *2 => ~*4 tổng thể -> dùng 1 lần nhưng *4
+// - Bullet: trước đây hút 2 lần/frame -> dùng 1 lần nhưng *2
+const Z_PULL_MULT = FEEL_COMPAT ? 4 : 2;
+const B_PULL_MULT = FEEL_COMPAT ? 2 : 1;
+
+// ✅ KHÔNG x2 sát thương: giữ interval đúng 30 tick như bản gốc
+const DAMAGE_INTERVAL = 30;
+
+// Particle: để gần mật độ thị giác cũ (trước bị gọi trùng)
+const PARTICLE_INTERVAL = FEEL_COMPAT ? 2 : 3;
+
+// (Tùy chọn) chỉ spawn hạt khi hố đen trong màn hình + đệm
+// Tránh phí vẽ hạt khi ở rất xa camera
+function isCircleVisible(x, y, r, camera) {
+    if (!camera) return true; // nếu không quản lý camera thì cứ cho true
+    const left   = camera.x - r - 64;
+    const right  = camera.x + camera.w + r + 64;
+    const top    = camera.y - r - 64;
+    const bottom = camera.y + camera.h + r + 64;
+    return (x >= left && x <= right && y >= top && y <= bottom);
+}
+
+function updateBlackHoles() {
+    const now = Date.now(); // ✅ đo 1 lần/frame
+
+    // Duyệt ngược để có thể splice xoá phần tử an toàn
+    for (let i = blackHoles.length - 1; i >= 0; i--) {
+        const hole = blackHoles[i];
+
+        // Hết hạn sống → xoá ngay, không xử lý tiếp
+        if (now >= hole.endTime) {
+            blackHoles.splice(i, 1);
+            continue;
+        }
+
+        // Tick chỉ tăng 1 lần/frame
+        hole.tick++;
+
+        // Cache thuộc tính dùng nhiều lần để giảm lookup
+        const pullRadius = hole.pullRadius | 0;
+        const pullSpeed  = hole.pullSpeed;
+        const hx = hole.x, hy = hole.y;
+
+        // Precompute cho kiểm tra phạm vi
+        const r2   = pullRadius * pullRadius;
+        const invR = pullRadius > 0 ? (1 / pullRadius) : 0;
+
+        // ✅ Damage theo đúng bản cũ: mỗi 30 tick
+        const damageThisTick = (hole.tick % DAMAGE_INTERVAL === 0);
+
+        // Chỉ hút khi có bán kính & tốc độ hút
+        if (pullRadius > 0 && pullSpeed !== 0) {
+            // Lấy danh sách cell giao với hình tròn hút (không tạo mảng mới)
+            cellsForCircle(hx, hy, pullRadius, scratchCells);
+
+            // Duyệt từng cell ứng viên
+            for (let ci = 0; ci < scratchCells.length; ci++) {
+                const idx = scratchCells[ci];
+
+                // --- Hút zombie ---
+                const cellZ = gridZ[idx];
+                for (let zi = 0; zi < cellZ.length; zi++) {
+                    const z = cellZ[zi];
+                    if (!z.active) continue;
+
+                    // Vector từ zombie đến tâm hố
+                    const dx = hx - z.x;
+                    const dy = hy - z.y;
+                    const d2 = dx * dx + dy * dy;
+
+                    // So sánh bình phương khoảng cách để tránh sqrt sớm
+                    if (d2 < r2) {
+                        // Chỉ sqrt khi chắc chắn trong phạm vi
+                        const d = Math.sqrt(d2) || 1e-6; // tránh chia 0
+                        const invD = 1 / d;
+
+                        // Lực hút giảm theo khoảng cách: (1 - d/R) * pullSpeed * Z_PULL_MULT
+                        const strength = (1 - d * invR) * pullSpeed * Z_PULL_MULT;
+
+                        // Đẩy zombie về phía tâm (chuẩn hoá vector → không cần atan2/cos/sin)
+                        z.x += dx * invD * strength;
+                        z.y += dy * invD * strength;
+
+                        if (damageThisTick) {
+                            dealDamageToZombie(z, hole.damage);
+                        }
+                    }
+                }
+
+                // --- Hút đạn địch ---
+                const cellB = gridB[idx];
+                for (let bi = 0; bi < cellB.length; bi++) {
+                    const b = cellB[bi];
+                    if (!b.active) continue;
+
+                    const dx = hx - b.x;
+                    const dy = hy - b.y;
+                    const d2 = dx * dx + dy * dy;
+
+                    if (d2 < r2) {
+                        const d = Math.sqrt(d2) || 1e-6;
+                        const invD = 1 / d;
+
+                        // Đạn dùng hệ số B_PULL_MULT để giữ cảm giác cũ
+                        b.x += dx * invD * pullSpeed * B_PULL_MULT;
+                        b.y += dy * invD * pullSpeed * B_PULL_MULT;
+
+                        // Đủ gần tâm → thu hồi/huỷ
+                        if (d < 20) {
+                            releaseEnemyBullet(b);
+                        }
+                    }
+                }
+            }
+        }
+
+        // Di chuyển hố đen (sau khi hút), rồi clamp biên
+        hole.x = hx + hole.dx;
+        hole.y = hy + hole.dy;
+
+        if (hole.x < wallThickness) hole.x = wallThickness;
+        else if (hole.x > worldWidth - wallThickness) hole.x = worldWidth - wallThickness;
+
+        if (hole.y < wallThickness) hole.y = wallThickness;
+        else if (hole.y > worldHeight - wallThickness) hole.y = worldHeight - wallThickness;
+
+        // Spawn hạt (mật độ gần bản cũ). Có thể cắt bỏ khi offscreen để tiết kiệm.
+        if (hole.tick % PARTICLE_INTERVAL === 0) {
+            if (!globalThis.camera || isCircleVisible(hole.x, hole.y, pullRadius, globalThis.camera)) {
+                createVortexParticle(hole.x, hole.y, pullRadius);
+            }
+        }
+    }
+}
+
 /* ───────── helpers ───────── */
 function moveTowards(obj, target, spd) {
   const ang = Math.atan2(target.y - obj.y, target.x - obj.x);
@@ -3568,74 +3890,105 @@ function updateBlades() {
         }
     });
 }
-// --- BẮT ĐẦU: CÁC HÀM XỬ LÝ SỰ KIỆN TIẾP TẾ ---
+// ============================================================
+// SUPPLY DROP – BẢN TỐI ƯU KHÔNG setInterval / KHÔNG .filter()
+// - Chạy trong update() chính qua updateSupplyDrops(dt)
+// - Xoá phần tử bằng swap-remove (O(1)), không tạo mảng mới
+// - Giữ “cảm giác” spawn & rơi như bản cũ (theo camera tại thời điểm kích hoạt)
+// ============================================================
 
-/** Tạo ra 3-5 kiện hàng 🪂 và cho chúng rơi từ trên trời xuống.
- * Bắt đầu sự kiện thả hàng tiếp tế (phiên bản cải tiến).
- */
+// Danh sách loại tài nguyên: tạo 1 lần, tái sử dụng
+const SUPPLY_RESOURCE_TYPES = ["coin", "hp", "mana", "energy"];
+
+/** Kích hoạt sự kiện: tạo 3–7 kiện 🪂 rơi từ trên xuống */
 function triggerSupplyDrop() {
-    playSound('sfx-nuke-fall', 0.4);
-    showWarning("Hàng tiếp tế đang đến!");
+  playSound("sfx-nuke-fall", 0.4);
+  showWarning("Hàng tiếp tế đang đến!");
 
-    const dropCount = getRandomInt(3, 7); // Số lượng kiện hàng tiếp tế ngẫu nhiên từ 3 đến 7
+  const dropCount = getRandomInt(3, 7);
 
-    for (let i = 0; i < dropCount; i++) {
-        const drop = {
-            id: Date.now() + i, // Tạo một ID duy nhất
-            x: camera.x + Math.random() * canvas.width, // Rơi ngẫu nhiên trong chiều rộng màn hình
-            y: camera.y - 50, // Bắt đầu rơi từ phía trên màn hình
-            speedY: 1 + Math.random() * 0.5,
-            
-            // THÊM MỚI: Xác định vị trí "chạm đất" là gần cuối màn hình hiện tại
-            finalY: camera.y + canvas.height - (50 + Math.random() * 50)
-        };
-        
-        supplyDrops.push(drop);
+  // Chốt snapshot camera/màn hình tại thời điểm spawn (giữ đúng cảm giác cũ)
+  const camX = camera.x, camY = camera.y;
+  const viewW = canvas.width, viewH = canvas.height;
 
-        // --- Bắt đầu logic tự quản lý vòng đời (giữ nguyên) ---
-        
-        const dropInterval = setInterval(() => {
-            const currentDrop = supplyDrops.find(d => d.id === drop.id);
-            if (!currentDrop) {
-                clearInterval(dropInterval);
-                return;
-            }
-
-            currentDrop.y += currentDrop.speedY;
-
-            // SỬA LỖI: Kiểm tra va chạm với 'finalY' thay vì 'worldHeight'
-            if (currentDrop.y > currentDrop.finalY) {
-                playSound('sfx-supply-drop-item', 0.5);
-
-                const resourceCount = getRandomInt(2, 10);
-                const resourceTypes = ['coin', 'hp', 'mana', 'energy'];
-                for (let j = 0; j < resourceCount; j++) {
-                    const type = resourceTypes[Math.floor(Math.random() * resourceTypes.length)];
-                    const offsetX = (Math.random() - 0.5) * 60;
-                    const offsetY = (Math.random() - 0.5) * 60;
-                    items.push({ x: currentDrop.x + offsetX, y: currentDrop.y + offsetY, type, active: true });
-                }
-                
-                supplyDrops = supplyDrops.filter(d => d.id !== currentDrop.id);
-                clearInterval(dropInterval);
-            }
-        }, 1000 / 60);
-    }
-}
-
-/**
- * Vẽ các kiện hàng tiếp tế (🪂) ra màn hình.
- */
-function drawSupplyDrops() {
-    ctx.font = "2rem serif";
-    ctx.textAlign = "center";
-    ctx.textBaseline = "middle";
-
-    supplyDrops.forEach(drop => {
-        ctx.fillText("🪂", drop.x, drop.y);
+  for (let i = 0; i < dropCount; i++) {
+    supplyDrops.push({
+      // id: performance.now() + i, // tuỳ chọn nếu bạn muốn debug
+      x: camX + Math.random() * viewW,
+      y: camY - 50,
+      speedY: 1 + Math.random() * 0.5, // ~1..1.5 px/frame @60fps
+      finalY: camY + viewH - (50 + Math.random() * 50), // “chạm đất” gần đáy màn hình
+      active: true
     });
+  }
 }
-// --- KẾT THÚC: CÁC HÀM XỬ LÝ SỰ KIỆN TIẾP TẾ ---
+
+/** Cập nhật rơi cho các kiện hàng (gọi trong update() mỗi frame) */
+// Không dùng dt: tốc độ rơi tính theo "mỗi frame" (~60fps)
+// Giữ nguyên cảm giác spawn & chạm đất như bản cũ
+function updateSupplyDrops() {
+  for (let i = supplyDrops.length - 1; i >= 0; i--) {
+    const drop = supplyDrops[i];
+
+    // Nếu có flag inactive thì xoá nhanh (swap-remove)
+    if (!drop.active) {
+      const last = supplyDrops.pop();
+      if (i < supplyDrops.length) supplyDrops[i] = last;
+      continue;
+    }
+
+    // Rơi mỗi frame (không scale theo thời gian)
+    drop.y += drop.speedY; // speedY ~ 1..1.5 đã set lúc spawn
+
+    // Chạm "đất" (finalY chốt tại thời điểm spawn)
+    if (drop.y > drop.finalY) {
+      playSound("sfx-supply-drop-item", 0.5);
+
+      const resourceCount = getRandomInt(2, 10);
+      for (let j = 0; j < resourceCount; j++) {
+        const type = SUPPLY_RESOURCE_TYPES[(Math.random() * SUPPLY_RESOURCE_TYPES.length) | 0];
+        const offsetX = (Math.random() - 0.5) * 60;
+        const offsetY = (Math.random() - 0.5) * 60;
+        items.push({
+          x: drop.x + offsetX,
+          y: drop.y + offsetY,
+          type,
+          active: true
+        });
+      }
+
+      // Xoá phần tử đã hoàn tất (swap-remove)
+      drop.active = false;
+      const last = supplyDrops.pop();
+      if (i < supplyDrops.length) supplyDrops[i] = last;
+    }
+  }
+}
+
+/** Vẽ kiện hàng – có culling để giảm overdraw */
+function drawSupplyDrops() {
+  ctx.font = "2rem serif";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+
+  const left   = camera.x - 64;
+  const right  = camera.x + canvas.width  + 64;
+  const top    = camera.y - 64;
+  const bottom = camera.y + canvas.height + 64;
+
+  for (let i = 0; i < supplyDrops.length; i++) {
+    const d = supplyDrops[i];
+    if (d.x >= left && d.x <= right && d.y >= top && d.y <= bottom) {
+      ctx.fillText("🪂", d.x, d.y);
+    }
+  }
+}
+
+// Cách dùng trong game loop:
+// update():  updateSupplyDrops(dt)
+// render():  drawSupplyDrops()
+// khi kích hoạt: triggerSupplyDrop()
+
 //🔄 8. Cập nhật logic game (Main loop logic)
 function update() {
   const now = Date.now();
@@ -3658,10 +4011,14 @@ function update() {
     }
 
   // Cập nhật hiệu ứng laze của người chơi
-  playerLasers = playerLasers.filter(laser => {
-      laser.life--;
-      return laser.life > 0;
-  });
+for (let i = playerLasers.length - 1; i >= 0; i--) {
+  const laser = playerLasers[i];
+  laser.life--;
+  if (laser.life <= 0) {
+    playerLasers.splice(i, 1);
+  }
+}
+
 // Cập nhật wave logic
 // ⏱ Đếm thời gian còn lại của wave
 if (lastWaveTime) {
@@ -4719,52 +5076,7 @@ lightningBolts.forEach((bolt, i) => {
         return strike.life > 0;
     });
 }
-blackHoles = blackHoles.filter(hole => {
-    if (Date.now() >= hole.endTime) return false;
-    hole.tick++;
 
-    zombies.forEach(z => {
-        if (!z.active) return;
-        const d = distance(hole, z);
-
-        // ✨ THAY ĐỔI: Sử dụng "pullRadius" để kiểm tra phạm vi
-        if (d < hole.pullRadius) {
-            // ✨ THAY ĐỔI: Sử dụng "pullRadius" để tính lực hút
-            const pullForce = (1 - d / hole.pullRadius) * hole.pullSpeed * 2;
-
-            const angle = Math.atan2(hole.y - z.y, hole.x - z.x);
-            z.x += Math.cos(angle) * pullForce;
-            z.y += Math.sin(angle) * pullForce;
-
-            if (hole.tick % 30 === 0) {
-                dealDamageToZombie(z, hole.damage);
-            }
-        }
-    });
-    // 🧲 Hút đạn zombie vào hố đen (giữ nguyên)
-    enemyBullets.forEach(b => {
-        if (!b.active) return;
-        // (Tùy chọn) Bạn cũng có thể đổi "hole.radius" ở đây thành "hole.pullRadius"
-        // nếu muốn đạn cũng bị hút từ xa.
-        if (distance(hole, b) < hole.pullRadius) { 
-            const angle = Math.atan2(hole.y - b.y, hole.x - b.x);
-            b.x += Math.cos(angle) * hole.pullSpeed;
-            b.y += Math.sin(angle) * hole.pullSpeed;
-            if (distance(hole, b) < 20) {
-                releaseEnemyBullet(b);
-            }
-        }
-    });
-    hole.x += hole.dx;
-    hole.y += hole.dy;
-    hole.x = Math.max(wallThickness, Math.min(worldWidth - wallThickness, hole.x));
-    hole.y = Math.max(wallThickness, Math.min(worldHeight - wallThickness, hole.y));
-// Spawn hạt
-    if (hole.tick % 3 === 0) {
-        createVortexParticle(hole.x, hole.y, hole.pullRadius);
-    }
-    return true;
-});
 // 🎯 Clone tự tìm zombie gần và bắn
 if (clonesActive) {
     // 1. Kiểm tra hết hạn kỹ năng
@@ -5029,12 +5341,15 @@ if (supportAuraActive) {
     document.getElementById("supportAuraBtn").innerText = "✨ Heal";
 }
 
-auraLightBeams = auraLightBeams.filter(beam => {
-    beam.life--;
-    // Hiệu ứng alpha mờ vào rồi mờ ra
-    beam.alpha = Math.sin((1 - beam.life / beam.initialLife) * Math.PI);
-    return beam.life > 0;
-});
+for (let i = auraLightBeams.length - 1; i >= 0; i--) {
+  const beam = auraLightBeams[i];
+  beam.life--;
+  beam.alpha = Math.sin((1 - beam.life / beam.initialLife) * Math.PI);
+  if (beam.life <= 0) {
+    auraLightBeams.splice(i, 1);
+  }
+}
+
 // ================== CẬP NHẬT CỔNG KHÔNG GIAN ==================
 // GIAI ĐOẠN 1: THU NHỎ KHI ĐANG DỊCH CHUYỂN
 if (player.isTeleporting) {
@@ -5339,12 +5654,16 @@ const wasPowerBuffActive = isPowerBuffActive;
 
 updateParticles();
 updatePet();   // 🐰 xử lý pet mỗi frame
+updateMissiles();
+updateSpatialIndex();
+updateBlackHoles();
 zombies.forEach(z => updateBigBossLazer(z, globalDeltaTime));
 cleanupInactiveObjects();
   updateUI();
   updateStatsOverlay();
   updateMusic(); // Gọi hàm kiểm tra nhạc trong mỗi khung hình
   updateEnemyBullets();
+  updateSupplyDrops();
 }
 function updateSkillCooldowns() {
     const listItems = document.querySelectorAll('#skills-list .skill-item');
@@ -8643,80 +8962,6 @@ missiles.forEach(m => {
   ctx.textBaseline = "middle";
   ctx.fillText("🚀", 0, 0);
   ctx.restore();
-});
-// BÊN TRONG HÀM drawEffects()
-
-missiles = missiles.filter(m => {
-    // --- 1. Giai đoạn chờ (delay) ---
-    if (m.state === "delay") {
-        m.delay--;
-        if (m.delay <= 0) {
-            m.state = "fly";
-        }
-        return true;
-    }
-
-    // --- 2. Cập nhật di chuyển & dẫn hướng (giữ nguyên) ---
-    if (m.target && m.target.active) {
-        const desiredAngle = Math.atan2(m.target.y - m.y, m.target.x - m.x);
-        const currentAngle = Math.atan2(m.dy, m.dx);
-        const turnRate = 0.05;
-        let delta = desiredAngle - currentAngle;
-        if (delta > Math.PI) delta -= 2 * Math.PI;
-        if (delta < -Math.PI) delta += 2 * Math.PI;
-        const newAngle = currentAngle + Math.sign(delta) * Math.min(turnRate, Math.abs(delta));
-        const speed = 2.5;
-        m.dx = Math.cos(newAngle) * speed;
-        m.dy = Math.sin(newAngle) * speed;
-    }
-    m.x += m.dx;
-    m.y += m.dy;
-
-    // --- 3. Gây sát thương xuyên trên đường bay (giữ nguyên) ---
-    zombies.forEach(z => {
-        if (z.active && !m.hitSet.has(z) && distance(m, z) < 20) {
-            if (!z.missileHitCooldown || Date.now() > z.missileHitCooldown) {
-                dealDamageToZombie(z, m.damage);
-                m.hitSet.add(z);
-                z.missileHitCooldown = Date.now() + 100;
-            }
-        }
-    });
-
-    // --- 4. Kiểm tra giới hạn khoảng cách bay và va chạm ---
-    const travelDistance = distance({ x: m.startX, y: m.startY }, m);
-    const hitTarget = m.target && m.target.active && distance(m, m.target) < 25;
-
-    // --- 5. Xử lý NỔ KÉP khi hết tầm hoặc va chạm mục tiêu chính ---
-    if (travelDistance > 360 || hitTarget) {
-        
-        // ✨ BẮT ĐẦU PHẦN CẢI TIẾN ✨
-        // Vụ nổ chính (100% sát thương)
-        zombies.forEach(z => {
-            if (z.active && distance(m, z) < 120) { // Bán kính nổ 120px
-                dealDamageToZombie(z, m.damage);
-            }
-        });
-        createParticleExplosion(m.x, m.y, 50, 'fire'); // Hiệu ứng nổ chính
-
-        // Vụ nổ phụ (50% sát thương) sau 0.2 giây
-        setTimeout(() => {
-            zombies.forEach(z => {
-                if (z.active && distance(m, z) < 120) {
-                    dealDamageToZombie(z, m.damage * 0.5); // Gây 50% sát thương
-                }
-            });
-            // Tạo một vụ nổ nhỏ hơn cho hiệu ứng
-            const secondaryExplosion = getExplosion(m.x, m.y);
-            secondaryExplosion.life = 15; // Nổ nhỏ và tan nhanh
-            explosions.push(secondaryExplosion);
-        }, 200); // 200ms = 0.2 giây
-        // ✨ KẾT THÚC PHẦN CẢI TIẾN ✨
-
-        return false; // Xóa tên lửa sau khi kích hoạt nổ
-    }
-
-    return true; // Giữ tên lửa lại nếu chưa nổ
 });
 
 // 💣 B52 Bombs + 🛬 Máy bay
