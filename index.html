@@ -276,7 +276,7 @@ button.active {
 /* 🌟 Popup khi lên cấp */
 #levelUpPopup {
   position: fixed;
-  top: 20%;
+  top: 40%;
   left: 50%;
   transform: translate(-50%, -50%);
   font-size: 2.5rem;
@@ -284,7 +284,7 @@ button.active {
   font-weight: bold;
   text-shadow: 0 0 15px #ffff00;
   display: none;
-  z-index: 2000;
+  z-index: 10003;
 }
 
 /* 💀 Panel Game Over hiển thị khi thua */
@@ -1567,10 +1567,10 @@ const itemDropTable = [
   { type: 'crazymadnesstime', chance: 0.002 }, // 0.2%
 
   // --- Vật phẩm Hiếm ---
-  { type: 'box',              chance: 0.005 }, // 0.5%
+  { type: 'box',              chance: 0.008 }, // 0.8%
   { type: 'magnet',           chance: 0.003 }, // 0.3%
-  { type: 'secret',           chance: 0.003 }, // 0.3%
-  { type: 'potion',           chance: 0.005 }, // 0.5%
+  { type: 'secret',           chance: 0.200 }, // 20%
+  { type: 'potion',           chance: 0.015 }, // 1.5%
 
   // --- Buff (đã giảm) ---
   { type: 'lucky',            chance: 0.003 }, // 0.3%
@@ -1580,12 +1580,12 @@ const itemDropTable = [
 
   // --- Thường ---
   { type: 'expBonus',         chance: 0.010 }, // 1.0%
-  { type: 'hp',               chance: 0.010 }, // 1.0%
+  { type: 'hp',               chance: 0.050 }, // 5.0%
 
   // ⭐ Điều chỉnh tại đây
-  { type: 'coin',             chance: 0.250 }, // 25%
-  { type: 'mana',             chance: 0.350 }, // 35.0% (tăng 0.1%)
-  { type: 'energy',           chance: 0.350 } // 35.0%
+  { type: 'coin',             chance: 0.200 }, // 20%
+  { type: 'mana',             chance: 0.250 }, // 25%
+  { type: 'energy',           chance: 0.250 } // 25%
 
 ];
 
@@ -2472,22 +2472,24 @@ function killZombie(z) {
   // --- BẮT ĐẦU: LOGIC TÍNH EXP MỚI ---
   let baseExp = 0;
   
-  // 1. Tính EXP cơ bản theo loại zombie
-  if (z.isBigBoss)      baseExp = 1000;
-  else if (z.isBoss)    baseExp = 100;
-  else if (z.type === "miniBoss") baseExp = 10;
-  else if (z.isElite)   baseExp = 5;
-  else                  baseExp = 1;
-
-  // 2. Cộng thêm EXP dựa trên cấp độ của zombie
-  if (!z.isBigBoss && !z.isBoss) {
-      baseExp += (z.level - 1);
-  }
-
-  // 3. THAY ĐỔI: Cộng thêm EXP thưởng bằng đúng số wave (trừ 1)
-  // Công thức mới: Tăng 1 EXP thưởng cho mỗi wave đã qua.
-  const waveBonus = wave - 1;
-  let expGained = baseExp + waveBonus;
+// 1. Tính EXP cơ bản theo loại zombie
+if (z.isBigBoss) {
+    baseExp = calculateScaledBossExp(1000, wave);
+} else if (z.isBoss) {
+    baseExp = calculateScaledBossExp(100, wave);
+} else if (z.type === "miniBoss") {
+    baseExp = calculateScaledBossExp(10, wave);
+} else if (z.isElite) {
+    baseExp = 5; // Elite và zombie thường có thể giữ nguyên
+} else {
+    baseExp = 1;
+}
+// 2. Cộng thêm EXP dựa trên level (CHỈ DÀNH cho zombie thường/elite)
+if (!z.isBigBoss && !z.isBoss && z.type !== "miniBoss") {
+    baseExp += (z.level - 1);
+}
+// 3. Cộng thêm EXP thưởng theo wave (PHẦN NÀY BÂY GIỜ KHÔNG CẦN NỮA)
+let expGained = baseExp;
 
   // 4. Áp dụng buff x1.5 EXP nếu có
   if (Date.now() < expBuffEndTime) {
@@ -2531,6 +2533,23 @@ function calculateRequiredExp(level) {
     // Math.floor dùng để làm tròn xuống, cho ra một con số đẹp.
     return Math.floor(INITIAL_REQUIRED_EXP * Math.pow(level, exponent));
 }
+function calculateScaledBossExp(baseExp, currentWave) {
+  // --- BẠN CÓ THỂ TÙY CHỈNH HỆ SỐ CÂN BẰNG TẠI ĐÂY ---
+
+  // Mỗi wave sẽ cộng thêm bao nhiêu EXP cho boss.
+  // Ví dụ: 10 nghĩa là ở wave 10, boss sẽ được cộng thêm 90 EXP.
+  const SCALING_FACTOR_PER_WAVE = 10;
+
+  // ---------------------------------------------------
+
+  // Lượng EXP thưởng được tính từ wave thứ 2 trở đi.
+  // (currentWave - 1) để đảm bảo wave 1 không có thưởng.
+  const waveBonus = Math.max(0, (currentWave - 1) * SCALING_FACTOR_PER_WAVE);
+
+  // Trả về tổng EXP cơ bản cộng với phần thưởng, làm tròn cho số đẹp.
+  return Math.round(baseExp + waveBonus);
+}
+
 /**
  * Tính toán sát thương của zombie dựa trên loại, wave và level người chơi.
  * @param {object} z - Đối tượng zombie.
@@ -2570,7 +2589,7 @@ function dealDamageToZombie(z, dmg = 1) {
         finalDamage *= 2;
 
         // 1. Tỉ lệ Crit giảm còn 10%
-        const isCrit = Math.random() < 0.9;
+        const isCrit = Math.random() < 0.1;
 
         // Nếu crit thành công...
         if (isCrit) {
@@ -2789,38 +2808,87 @@ function shoot() {
 }
 
 function autoShootBurst() {
-const now = Date.now();
-let currentCooldown = autoShootCooldown; // Lấy cooldown gốc (1000ms)
-if (supportAuraActive) {
-    currentCooldown *= 0.8; // Giảm 20% thời gian chờ -> bắn nhanh hơn 20%
-}
-if (Date.now() < crazyMadnessTimeEndTime) {
-        currentCooldown /= 2; // Tốc độ bắn x2
-    }
-if (now - lastAutoShootTime >= currentCooldown) {
-    lastAutoShootTime = now;
-    autoBurstIndex = 0;
+  const now = Date.now(); // Lấy mốc thời gian hiện tại để tính toán chính xác
+
+  // --- 1. QUẢN LÝ THỜI GIAN HỒI GIỮA CÁC LOẠT BẮN ---
+
+  // Lấy thời gian hồi chiêu gốc từ biến autoShootCooldown
+  let currentCooldown = autoShootCooldown;
+
+  // Áp dụng các buff giúp bắn nhanh hơn nếu có
+  if (supportAuraActive) {
+    currentCooldown *= 0.8; // Kỹ năng Hào quang: giảm 20% thời gian hồi chiêu
+  }
+  if (Date.now() < crazyMadnessTimeEndTime) {
+    currentCooldown /= 2; // Buff CrazyMadnessTime: tốc độ bắn x2
   }
 
-  const bulletsPerDirection = playerUpgrades.lineBulletCount;
-  if (autoBurstIndex >= bulletsPerDirection) return;
-  if (now - autoLastBurstTime < autoBurstDelay) return;
-  if (zombies.length === 0) return;
+  // Kiểm tra xem đã đủ thời gian để bắt đầu một loạt bắn MỚI chưa
+  if (now - lastAutoShootTime >= currentCooldown) {
+    lastAutoShootTime = now; // Đặt lại mốc thời gian cho loạt bắn tiếp theo
+    autoBurstIndex = 0;      // Reset bộ đếm số đạn đã bắn trong loạt về 0
+  }
 
-  const target = zombies.reduce((a, b) =>
-    distance(a, player) < distance(b, player) ? a : b
-  );
+  // --- 2. QUẢN LÝ VIỆC BẮN TỪNG VIÊN TRONG MỘT LOẠT ---
+
+  // Lấy số lượng đạn cần bắn trong một loạt từ chỉ số nâng cấp của người chơi
+  const bulletsPerDirection = playerUpgrades.lineBulletCount;
+
+  // Nếu đã bắn đủ số đạn trong loạt này rồi thì dừng lại
+  if (autoBurstIndex >= bulletsPerDirection) return;
+
+  // Nếu chưa đủ độ trễ giữa các viên đạn (ví dụ 100ms), thì dừng lại.
+  // Điều này tạo ra hiệu ứng bắn theo loạt thay vì bắn tất cả cùng lúc.
+  if (now - autoLastBurstTime < autoBurstDelay) return;
+
+  // --- 3. TÌM MỤC TIÊU VÀ TÍNH TOÁN GÓC BẮN ---
+
+  // (Sử dụng phiên bản cải tiến với tầm bắn giới hạn)
+  const PLAYER_AUTOSHOOT_RANGE = 360; // Tầm bắn tối đa cho tự động bắn
+  let nearestTarget = null;
+  // So sánh bình phương khoảng cách để tránh dùng Math.sqrt() tốn kém
+  let minDistanceSq = PLAYER_AUTOSHOOT_RANGE * PLAYER_AUTOSHOOT_RANGE; 
+
+  // Dùng vòng lặp for đơn giản để duyệt qua tất cả zombie
+  for (const z of zombies) {
+    // Bỏ qua những zombie không hoạt động
+    if (!z.active) continue;
+
+    // Tính bình phương khoảng cách
+    const dSq = distanceSq(player, z);
+
+    // Nếu zombie này gần hơn mục tiêu gần nhất hiện tại VÀ nằm trong tầm bắn
+    if (dSq < minDistanceSq) {
+      minDistanceSq = dSq;    // Cập nhật khoảng cách gần nhất
+      nearestTarget = z;      // Gán mục tiêu mới
+    }
+  }
+
+  // Nếu sau vòng lặp không tìm thấy mục tiêu nào, thoát ra
+  if (nearestTarget === null) return;
+
+  // Gán target bằng mục tiêu đã tìm thấy
+  const target = nearestTarget; 
+
+  // Tính toán góc bắn (radian) từ người chơi đến mục tiêu
   const angle = Math.atan2(target.y - player.y, target.x - player.x);
 
-  const b = getBullet();
+  // --- 4. TẠO VÀ BẮN ĐẠN ---
+  // (Phần này bị thiếu trong đoạn code của bạn, tôi đã thêm lại cho đầy đủ)
+  
+  const b = getBullet(); // Lấy một viên đạn từ kho (object pooling)
+  // Thiết lập các thuộc tính cho viên đạn
   b.x = player.x;
   b.y = player.y;
-  b.dx = Math.cos(angle);
-  b.dy = Math.sin(angle);
+  b.dx = Math.cos(angle); // Hướng di chuyển theo trục X
+  b.dy = Math.sin(angle); // Hướng di chuyển theo trục Y
   b.speed = playerUpgrades.bulletSpeed;
   b.active = true;
-  bullets.push(b);
-playSound('sfx-shoot', 0.01); // Thêm 0.2 để chỉ phát ở 20% âm lượng
+  bullets.push(b); // Thêm viên đạn vào danh sách đạn đang bay
+
+  playSound('sfx-shoot', 0.01); // Phát âm thanh bắn với âm lượng nhỏ
+
+  // Tăng bộ đếm số đạn đã bắn trong loạt và cập nhật thời gian
   autoBurstIndex++;
   autoLastBurstTime = now;
 }
@@ -4457,6 +4525,14 @@ function sysUpdateBullets() {
         }
       }
     }
+        const buffer = 50; // Thêm một khoảng đệm nhỏ
+    if (b.x < camera.x - buffer || 
+        b.x > camera.x + canvas.width + buffer ||
+        b.y < camera.y - buffer || 
+        b.y > camera.y + canvas.height + buffer) 
+    {
+        releaseBullet(b); // "Xóa" viên đạn bằng cách trả nó về kho
+    }
   }
 }
 function sysUpdateEnemyBullets(now) {
@@ -4489,7 +4565,11 @@ function sysUpdateEnemyBullets(now) {
 function sysUpdateZombies(now) {
   for (let i = 0; i < zombies.length; i++) {
     const z = zombies[i]; if (!z.active) continue;
-
+    // TỐI ƯU: Nếu zombie ở quá xa người chơi, bỏ qua việc cập nhật logic cho nó
+    const activationRange = canvas.width; // Khoảng cách zombie bắt đầu "thức dậy"
+    if (distance(player, z) > activationRange) {
+        continue; // Bỏ qua tất cả logic bên dưới cho con zombie này
+    }
     // burn tick mỗi giây
     if (z.burnEndTime && now < z.burnEndTime) {
       if (!z.lastBurnTick || now - z.lastBurnTick > 1000) { z.lastBurnTick = now;
