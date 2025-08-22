@@ -1227,7 +1227,7 @@ button.active {
   </div>
 </div>
 <div class="ui-logo left-logo">Zombie<br>Survivor</div>
-<div class="ui-logo right-logo">tdangw<br>Ver: 1.2</div>
+<div class="ui-logo right-logo">Bubble<br>Ver: 1.2</div>
 <div id="ui">
   <button id="autoBtn" data-tooltip="⚙️ Auto:
 - Tự động tấn công zombie gần nhất
@@ -1311,7 +1311,7 @@ button.active {
 - Tiêu hao: 5 ⚡">🐰 Pet</button>
 
   <div id="score">
-    <div id="score-top" data-tooltip="Exp cấp tiếp theo: 100">Exp: 0000 |❤️: 0010</div>
+    <div id="score-top" data-tooltip="Exp cấp tiếp theo: --">Exp: 0000 |❤️: 0010</div>
     <div id="score-bottom">Level: 0001 |⚡: 0000</div>
   </div>
 </div>
@@ -1379,7 +1379,7 @@ button.active {
 <!-- 💀 Game Over Panel -->
 <div id="gameOverPanel" class="gameOverPanel">
   <h2 class="gameOverTitle">Game Over</h2>
-  <button onclick="location.reload()" class="restartButton">Chơi lại</button>
+  <button onclick="resetGame()" class="restartButton">Chơi lại</button>
 </div>
 
 <!-- 🌊 Popup khi bắt đầu mỗi Wave -->
@@ -1725,7 +1725,7 @@ zombieByLevel.boss = 0;
 zombieByLevel.miniBoss = 0;
 let skillStats = {};             // 📊 Thống kê kỹ năng
 // 🎯 EXP lên cấp
-const INITIAL_REQUIRED_EXP = 100;
+const INITIAL_REQUIRED_EXP = 50; // EXP cần để lên cấp
 // 🧍 Trạng thái người chơi
 const player = {
   x: 480, y: 360, size: 20, speed: 1,
@@ -1733,12 +1733,11 @@ const player = {
   coins: 0,
   level: 1, score: 0,
   exp: 0,
-  currentLevelExp: 0, // THÊM MỚI: EXP của cấp hiện tại
-  requiredExp: INITIAL_REQUIRED_EXP,   // THÊM MỚI: EXP cần để lên cấp tiếp theo
+  currentLevelExp: 0, // EXP hiện tại của level
+  requiredExp: INITIAL_REQUIRED_EXP,  // EXP cần để lên cấp
   hitTimer: 0,
   name: "Player",
   isDying: false,
-  // ✨ THÊM CÁC DÒNG SAU VÀO ĐÂY ✨
   isTeleporting: false,      // Cờ báo hiệu đang trong quá trình dịch chuyển
   isGrowingAfterTeleport: false, // Cờ báo hiệu đang lớn dần ra sau khi dịch chuyển
   originalSize: 20,          // Dùng để lưu lại kích thước gốc
@@ -8755,7 +8754,7 @@ if (fpsText !== lastFpsText) {
 if (frame % 60 === 0 && gameStarted) {
 // Giới hạn zombie tối đa là 200 - Số lượng zombie hiện tại
 if (zombies.length < 200) {
-    const spawnCount = Math.min(50, 200 - zombies.length);
+    const spawnCount = Math.min(1, 200 - zombies.length);
     for (let i = 0; i < spawnCount; i++) {
     spawnZombie();
 }
@@ -8787,6 +8786,203 @@ function startGame() {
   showUpgradePopup();        // 🎁 Gọi nâng cấp trước
   pendingWave = wave;        // 🌊 Wave sẽ hiển thị sau khi nâng cấp xong
 }
+/**
+ * Thiết lập lại toàn bộ trạng thái của game để bắt đầu một lượt chơi mới.
+ * Hàm này không tải lại trang, giúp tiết kiệm thời gian và tài nguyên.
+ */
+function resetGame() {
+    console.log("Resetting game state...");
+
+    // 1. Ẩn các giao diện không cần thiết
+    document.getElementById('gameOverPanel').classList.remove('visible');
+    document.getElementById('pauseMenu').classList.add('hidden');
+    
+    // 2. Reset các biến trạng thái cốt lõi của game
+    gameOver = false;
+    isPaused = false;
+    gameStarted = true; // Game được bắt đầu ngay lập tức
+    wave = 1;
+    waveTimer = waveTime;
+    lastWaveTime = Date.now();
+    frame = 0;
+    currentDay = 1;
+    dayTime = 0.25; // Reset lại thời gian trong ngày về 6h sáng
+    zombieSpawnedCount = 0;
+    bigBossRespawnTimer = 0;
+    pendingWave = null;
+    // 3. Reset toàn bộ trạng thái của người chơi về ban đầu
+    player.hearts = 10;
+    player.energy = 0;
+    player.mana = 0;
+    player.coins = 0;
+    player.level = 1;
+    player.speed = 1;
+    player.exp = 0;
+    player.currentLevelExp = 0;
+    player.requiredExp = INITIAL_REQUIRED_EXP;
+    player.score = 0;
+    zombieKillCount = 0;
+    player.isDying = false;
+    player.x = canvas.width / 2; // Đưa player về giữa màn hình
+    player.y = canvas.height / 2;
+
+    // 4. Reset các chỉ số nâng cấp của người chơi
+    // QUAN TRỌNG: Xem lưu ý ở dưới về các nâng cấp vĩnh viễn
+    playerUpgrades.fireRate = 1;
+    playerUpgrades.damageBoost = 1;
+    playerUpgrades.hpBoost = 0;
+    playerUpgrades.bulletSpeed = 1;
+    playerUpgrades.lineBulletCount = 1;
+
+    // 5. Reset các nâng cấp kỹ năng
+    skillUpgrades.bladeCount = 2;
+    skillUpgrades.bladeDamage = 1;
+    skillUpgrades.swordLevel = 1;
+    skillUpgrades.swordDamage = 3;
+    skillUpgrades.fireCount = 2;
+    skillUpgrades.fireDamage = 1;
+    skillUpgrades.iceCount = 2;
+    skillUpgrades.iceDamage = 2;
+    skillUpgrades.thunderCount = 2;
+    skillUpgrades.thunderDamage = 3;
+    skillUpgrades.auraHealLevel = 0;
+    skillUpgrades.fairyCount = 1;
+    skillUpgrades.fairyHealLevel = 0;
+    skillUpgrades.fairyDamageLevel = 0;
+
+    // 6. Dọn dẹp tất cả các mảng chứa đối tượng trong game
+    // Cách .length = 0 là cách xóa mảng hiệu quả nhất, không "gây rác"
+    zombies.length = 0;
+    bullets.length = 0;
+    enemyBullets.length = 0;
+    items.length = 0;
+    explosions.length = 0;
+    particles.length = 0;
+    swords.length = 0;
+    downwardSwords.length = 0;
+    fireballs.length = 0;
+    iceballs.length = 0;
+    thunderBalls.length = 0;
+    fairies.length = 0;
+    clones.length = 0;
+    activeSkills.length = 0; // Xóa các kỹ năng đã học
+    supplyDrops.length = 0;
+    // --- Dọn dẹp các mảng chứa đối tượng của kỹ năng ---
+    satellites.length = 0;
+    ufos.length = 0;
+    lightningBolts.length = 0;
+    activeLightningStrikes.length = 0;
+    blackHoles.length = 0;
+    bloodOrbs.length = 0;
+    missiles.length = 0;
+    nuclearBombs.length = 0;
+    bombsB52.length = 0;
+    activePlanes.length = 0;
+    auraCrackLines.length = 0;
+    auraLightBeams.length = 0;
+// 7. Reset trạng thái và thời gian hồi của các kỹ năng/buff
+    lastManualShootTime = 0; // Reset thời gian hồi bắn tay
+    lastAutoShootTime = 0;   // Reset thời gian hồi auto-shoot
+    autoBurstIndex = 0;      // Reset loạt đạn của auto-shoot
+    autoLastBurstTime = 0;
+    levelUpGlowTime = 0;     // Tắt hiệu ứng sáng khi lên cấp
+
+    // Dọn dẹp các bộ đệm thông báo vật phẩm để tránh popup thừa
+    clearTimeout(playerLootTimer);
+    clearTimeout(petLootTimer);
+    Object.keys(playerLootBuffer).forEach(k => delete playerLootBuffer[k]);
+    Object.keys(petLootBuffer).forEach(k => delete petLootBuffer[k]);
+
+    // Dọn dẹp các đối tượng thống kê
+    // Cách này sẽ xóa sạch các key trong object
+    for (let key in zombieByLevel) {
+        delete zombieByLevel[key];
+    }
+    for (let key in skillStats) {
+        delete skillStats[key];
+    }
+    // --- Reset các Buff nhặt được ---
+    luckyBuffEndTime = 0;
+    powerBuffEndTime = 0;
+    isPowerBuffActive = false;
+    powerBuffDamageBonus = 0;
+    crazyBuffEndTime = 0;
+    isCrazyBuffActive = false;
+    crazyBuffStats = {};
+    expBuffEndTime = 0;
+    magnetBuffEndTime = 0;
+    crazyMadnessTimeEndTime = 0;
+    isCrazyMadnessTimeActive = false;
+    crazyMadnessTimeBuffStats = {};
+
+    // --- Reset các Kỹ năng Passive (có nút bấm trên UI) ---
+    autoShoot = false; // Tắt auto-shoot để người chơi tự bật lại
+    
+    swordActive = false;
+    swordEndTime = 0;
+    
+    bladeActive = false;
+    bladeEndTime = 0;
+    
+    fireActive = false;
+    fireEndTime = 0;
+    
+    iceActive = false;
+    iceEndTime = 0;
+    
+    thunderActive = false;
+    thunderEndTime = 0;
+    
+    petActive = false;
+    petEndTime = 0;
+    petRabbit = null;
+    
+    supportAuraActive = false;
+    supportAuraEndTime = 0;
+
+    fairyActive = false;
+    fairyEndTime = 0;
+    fairyDeathDefyAvailable = false;
+    fairyDamageBonus = 0;
+
+    // --- Reset các Kỹ năng Active (học khi lên cấp) ---
+    player.shieldActive = false;
+    if (player.shieldEndTime) player.shieldEndTime = 0;
+
+    satelliteActive = false;
+    satelliteEndTime = 0;
+    
+    ufoActive = false;
+    ufoEndTime = 0;
+
+    lightningActive = false;
+    lightningEndTime = 0;
+    
+    disguiseActive = false;
+    disguiseEndTime = 0;
+
+    clonesActive = false;
+    clonesEndTime = 0;
+
+    bloodOrbActive = false;
+    bloodOrbEndTime = 0;
+
+    spaceGateActive = false;
+    spaceGateEndTime = 0;
+    spaceGate = null;
+    
+    // 8. Cập nhật lại toàn bộ giao diện (UI)
+    updateUI();
+    updateStatsOverlay();
+    updateSkillsList(); // Cập nhật lại bảng kỹ năng (sẽ trống)
+    document.querySelectorAll('#ui button.active').forEach(btn => btn.classList.remove('active'));
+
+    // 9. Bật lại nhạc nền mặc định và sinh lứa zombie đầu tiên
+    playRandomNormalMusic();
+    spawnZombie();
+    showUpgradePopup(); // Hiển thị nâng cấp cho lượt chơi mới
+}
+
 // Hàm bật/tắt Shop
 function toggleShop() {
     const shop = document.getElementById('shopOverlay');
@@ -10790,7 +10986,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // Gán sự kiện cho các nút trong Pause Menu
     document.getElementById('resumeBtn').onclick = togglePauseMenu;
-    document.getElementById('restartBtnPause').onclick = () => location.reload();
+    document.getElementById('restartBtnPause').onclick = resetGame;
     document.getElementById('guideBtnPause').onclick = showGuide;
     document.getElementById('infoBtnPause').onclick = showInfo;
     document.getElementById('exitBtn').onclick = () => location.reload();
