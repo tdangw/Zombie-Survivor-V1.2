@@ -47,7 +47,11 @@
   --glow-accent: 0 0 8px var(--color-accent);
 }
 
-  body { margin: 0; background: #111; overflow: hidden; font-family: sans-serif; }
+  body { margin: 0; background: #111; overflow: hidden; font-family: sans-serif; background-image: url('images/foggy-graveyard.png');
+  background-size: cover;
+  background-position: center center;
+  background-repeat: no-repeat;
+  background-attachment: fixed;}
   canvas { display: block; margin: auto; transition: background 1s ease; }
 /* 🎯 Giao diện chính */
 #ui {
@@ -1189,6 +1193,29 @@ button.active {
   50% { opacity: 1; }
   100% { opacity: 0.6; }
 }
+/* CSS cho hình nền loading */
+#loadingOverlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  
+  /* Màu nền đen làm dự phòng nếu ảnh không tải được */
+  background-color: var(--color-bg-dark); 
+  
+  /* Đặt trực tiếp hình nền duy nhất của bạn tại đây */
+  background-image: url('images/neon-night.png');
+  
+  background-size: cover;
+  background-position: center;
+  
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 10002;
+}
+
 /* kết thúc style */
 </style>
 </head>
@@ -2458,52 +2485,67 @@ function releaseZombie(z) {
 }
 // 💥 Hàm tiêu diệt zombie, dùng chung cho mọi kỹ năng
 function killZombie(z) {
+  // --- BƯỚC 1: XỬ LÝ BAN ĐẦU ---
+
+  // Nếu zombie đã bị xử lý rồi hoặc không hoạt động, bỏ qua để tránh lỗi
   if (z._killed || !z.active) return;
-  z._killed = true;
+  z._killed = true; // Đánh dấu là đã xử lý để không gọi lại hàm này trên cùng 1 zombie
+
+  // Phát âm thanh và hiệu ứng hình ảnh
   playSound('sfx-zombie-die', 0.3);
   spawnDyingEffect(z);
 
+  // Trả đối tượng zombie về "kho" (object pool) để tái sử dụng, tối ưu hiệu năng
   releaseZombie(z);
   
+  // --- BƯỚC 2: CẬP NHẬT ĐIỂM SỐ ---
+
   // Luôn cộng 1 vào 'score' để đếm kill và tính high score
   player.score++;
   zombieKillCount = player.score;
 
-  // --- BẮT ĐẦU: LOGIC TÍNH EXP MỚI ---
-  let baseExp = 0;
-  
-// 1. Tính EXP cơ bản theo loại zombie
-if (z.isBigBoss) {
-    baseExp = calculateScaledBossExp(1000, wave);
-} else if (z.isBoss) {
-    baseExp = calculateScaledBossExp(100, wave);
-} else if (z.type === "miniBoss") {
-    baseExp = calculateScaledBossExp(10, wave);
-} else if (z.isElite) {
-    baseExp = 5; // Elite và zombie thường có thể giữ nguyên
-} else {
-    baseExp = 1;
-}
-// 2. Cộng thêm EXP dựa trên level (CHỈ DÀNH cho zombie thường/elite)
-if (!z.isBigBoss && !z.isBoss && z.type !== "miniBoss") {
-    baseExp += (z.level - 1);
-}
-// 3. Cộng thêm EXP thưởng theo wave (PHẦN NÀY BÂY GIỜ KHÔNG CẦN NỮA)
-let expGained = baseExp;
+  // --- BƯỚC 3: TÍNH TOÁN EXP (LOGIC HOÀN CHỈNH) ---
 
-  // 4. Áp dụng buff x1.5 EXP nếu có
+  let expBaseCalculated = 0; // Biến tạm để lưu EXP gốc trước khi thêm yếu tố ngẫu nhiên
+
+  // 3.1. Tính EXP gốc cho từng loại zombie
+  if (z.isBigBoss) {
+    // Đối với các loại boss, gọi hàm tính EXP tăng tiến riêng
+    expBaseCalculated = calculateScaledBossExp(1000, wave);
+  } else if (z.isBoss) {
+    expBaseCalculated = calculateScaledBossExp(100, wave);
+  } else if (z.type === "miniBoss") {
+    // Sử dụng EXP cơ bản là 50 đã sửa
+    expBaseCalculated = calculateScaledBossExp(10, wave);
+  } else {
+    // Logic cho zombie thường và Elite
+    const base = z.isElite ? 5 : 1;
+    const levelBonus = z.level - 1;
+    const waveBonus = wave - 1; // Thưởng theo wave chỉ áp dụng cho zombie thường/elite
+    expBaseCalculated = base + levelBonus + waveBonus;
+  }
+
+  // 3.2. Thêm yếu tố ngẫu nhiên +/- 10%
+  // Công thức: giá trị * (1 + (số ngẫu nhiên từ -0.1 đến +0.1))
+  const randomFactor = 1 + (Math.random() * 0.2 - 0.1); 
+  let expGained = expBaseCalculated * randomFactor;
+
+  // 3.3. Làm tròn kết quả và đảm bảo EXP nhận được luôn ít nhất là 1
+  expGained = Math.max(1, Math.round(expGained));
+
+  // 3.4. Áp dụng các buff khác nếu có (ví dụ: buff x1.5 EXP)
   if (Date.now() < expBuffEndTime) {
-      expGained = Math.round(expGained * 1.5);
+    expGained = Math.round(expGained * 1.5);
   }
   
-  // 5. Cộng EXP vào cho người chơi
+  // 3.5. Cộng EXP vào cho người chơi
   player.exp += expGained;
   player.currentLevelExp += expGained;
   createExpGainEffect(z, expGained);
 
-  // --- KẾT THÚC: LOGIC TÍNH EXP MỚI ---
+  // --- BƯỚC 4: CẬP NHẬT THỐNG KÊ VÀ RƠI VẬT PHẨM ---
 
-  // Phần thống kê và rơi vật phẩm giữ nguyên
+  // Cập nhật thống kê số lượng zombie đã diệt theo từng loại
   if (z.level && z.level >= 1 && z.level <= 10) {
     zombieByLevel[z.level] = (zombieByLevel[z.level] || 0) + 1;
   }
@@ -2517,6 +2559,7 @@ let expGained = baseExp;
     zombieByLevel.bigBoss = (zombieByLevel.bigBoss || 0) + 1;
   }
   
+  // Gọi hàm để xử lý việc rơi vật phẩm
   dropItem(z.x, z.y, z.isBoss, z.isBigBoss, z.type === "miniBoss", z.isElite);
 }
 /**
