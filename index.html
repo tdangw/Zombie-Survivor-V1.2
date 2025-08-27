@@ -1457,17 +1457,56 @@ function stopAllMusic() {
 
 // Hàm phát nhạc nền ngẫu nhiên
 function playRandomNormalMusic() {
-    const availableTracks = normalMusicTracks.filter(id => id !== currentNormalTrackId);
-    const randomTrackId = availableTracks.length ? availableTracks[Math.floor(Math.random() * availableTracks.length)] : normalMusicTracks[0];
-    
-    stopAllMusic();
-    const trackElement = document.getElementById(randomTrackId);
-    if (trackElement) {
-        updateAllMusicVolume(); // Gọi hàm để đặt đúng âm lượng
-        trackElement.play().catch(e => console.error("Lỗi phát nhạc thường:", e));
+  const list = normalMusicTracks;
+  const n = list.length;
+
+  // 0 bài: thoát ngay
+  if (n === 0) return;
+
+  // 1 bài: chỉ phát nếu khác bài hiện tại
+  if (n === 1) {
+    const id = list[0];
+    if (id !== currentNormalTrackId) {
+      const el = document.getElementById(id);
+      if (el) {
+        updateAllMusicVolume();
+        // Chỉ dừng nhạc khi chắc chắn có bài mới để phát
+        stopAllMusic();
+        el.play().catch(e => console.error("Lỗi phát nhạc:", e));
+        currentNormalTrackId = id;
+        currentMusicState = 'normal';
+      }
     }
-    currentNormalTrackId = randomTrackId;
-    currentMusicState = 'normal';
+    return;
+  }
+
+  // n >= 2
+  const cur = list.indexOf(currentNormalTrackId);
+
+  let idx;
+  if (cur === -1) {
+    // lần đầu/chưa khớp danh sách: bốc tự do 0..n-1 (đều xác suất)
+    idx = (Math.random() * n) | 0;
+  } else {
+    // bốc đều trong (n-1) bài khác: 0..n-2 rồi nhảy qua cur
+    const r = (Math.random() * (n - 1)) | 0; // 0..n-2
+    idx = (r >= cur) ? r + 1 : r;
+  }
+
+  const id = list[idx];
+  if (id === currentNormalTrackId) return; // phòng hờ
+
+  const el = document.getElementById(id);
+  if (!el) {
+    console.warn("Không tìm thấy phần tử audio:", id);
+    return;
+  }
+
+  updateAllMusicVolume();
+  stopAllMusic();
+  el.play().catch(e => console.error("Lỗi phát nhạc:", e));
+  currentNormalTrackId = id;
+  currentMusicState = 'normal';
 }
 
 // Hàm cập nhật nhạc nền chính
@@ -3673,97 +3712,103 @@ function findActiveZombie() {
    🐰 CẬP NHẬT PET – GỌI MỖI FRAME
    ─────────────────────────────────────── */
 function updatePet() {
-  const now = Date.now();
-  if (!petActive || !petRabbit) return;
+    const now = Date.now();
+    if (!petActive || !petRabbit) return;
 
-  /* hằng số */
-  const DIST_ITEM    = 360;
-  const DIST_FOLLOW  = 480;
-  const TOLERANCE    = 40;
-  const PICK_DIST    = 16;
-  const GIVE_UP_MS   = 3000;
-  const MIN_PROGRESS = 20;    // phải tiến ≥20 px sau 3 s
+    // Hằng số
+    const DIST_ITEM     = 360;
+    const DIST_FOLLOW   = 480;
+    const TOLERANCE     = 40;
+    const PICK_DIST     = 16;
+    const GIVE_UP_MS    = 3000;
+    const MIN_PROGRESS  = 20;
 
-  /* tốc độ pet */
-  petRabbit.speed = (player.speed ?? 1) + 0.4;
+    // Tốc độ pet
+    petRabbit.speed = (player.speed ?? 1) + 0.4;
 
-  /* 0. quay về nếu xa player quá */
-  if (distance(petRabbit, player) > DIST_FOLLOW) {
-    moveTowards(petRabbit, player, petRabbit.speed * 1.6);
-    petRabbit.target = null;
-    return;
-  }
+    // 0. Quay về nếu xa player quá
+    if (distance(petRabbit, player) > DIST_FOLLOW) {
+        moveTowards(petRabbit, player, petRabbit.speed * 1.6);
+        petRabbit.target = null;
+        return;
+    }
 
-  /* 1. chọn mục tiêu mới */
-  if (!petRabbit.target || !petRabbit.target.active) {
-    petRabbit.target = items
-      .filter(it => {
-        if (!it.active) return false;
-        if (distance(petRabbit, it) > DIST_ITEM) return false;
-        /* cấm chọn lại item vừa bỏ trong 2 s */
-        if (it.id === lastGiveUpId &&
-            Date.now() - lastGiveUpTime < RESELECT_CD) return false;
-        return true;
-      })
-      .sort((a, b) => distance(petRabbit, a) - distance(petRabbit, b))[0] || null;
+    // 1. Chọn mục tiêu mới (tối ưu, không dùng filter/sort)
+    if (!petRabbit.target || !petRabbit.target.active) {
+        petRabbit.target = null;
+        let minDistanceSq = DIST_ITEM * DIST_ITEM;
 
+        for (const item of items) {
+            if (!item.active) continue;
+            if (Date.now() - lastGiveUpTime < RESELECT_CD && item.id === lastGiveUpId) continue;
+            
+            const distSq = distanceSq(petRabbit, item);
+            if (distSq < minDistanceSq) {
+                minDistanceSq = distSq;
+                petRabbit.target = item;
+            }
+        }
+
+        if (petRabbit.target) {
+            petRabbit.chaseStart = Date.now();
+            petRabbit.startDistance = Math.sqrt(minDistanceSq);
+        }
+    }
+
+    // 2. Đuổi & nhặt
     if (petRabbit.target) {
-      petRabbit.chaseStart    = Date.now();
-      petRabbit.startDistance = distance(petRabbit, petRabbit.target);
+        const dNow      = distance(petRabbit, petRabbit.target);
+        const elapsed   = Date.now() - petRabbit.chaseStart;
+        const progress  = petRabbit.startDistance - dNow;
+
+        if (elapsed > GIVE_UP_MS && progress < MIN_PROGRESS) {
+            giveUp();
+            return;
+        }
+
+        if (distance(player, petRabbit.target) > DIST_FOLLOW) {
+            giveUp();
+            return;
+        }
+
+        moveTowards(petRabbit, petRabbit.target, petRabbit.speed);
+
+        if (dNow < PICK_DIST) collectLoot();
     }
-  }
-
-  /* 2. đuổi & nhặt */
-  if (petRabbit.target) {
-    const dNow     = distance(petRabbit, petRabbit.target);
-    const elapsed  = Date.now() - petRabbit.chaseStart;
-    const progress = petRabbit.startDistance - dNow;
-
-    /* bỏ nếu >3 s mà tiến <20 px */
-    if (elapsed > GIVE_UP_MS && progress < MIN_PROGRESS) {
-      giveUp();
-      return;
-    }
-
-    /* bỏ nếu mục tiêu lại quá xa player */
-    if (distance(player, petRabbit.target) > DIST_FOLLOW) {
-      giveUp();
-      return;
-    }
-
-    moveTowards(petRabbit, petRabbit.target, petRabbit.speed);
-
-    if (dNow < PICK_DIST) collectLoot();
-  }
-    /* 3. bám player khi không có mục tiêu */
+    // 3. Bám player khi không có mục tiêu
     else if (distance(petRabbit, player) > TOLERANCE) {
         moveTowards(petRabbit, player, petRabbit.speed * 1.2);
     }
 
-    // ✨ BẮT ĐẦU LOGIC TẤN CÔNG ĐẾM NGƯỢC MỚI ✨
-    // 1. Đếm ngược thời gian hồi chiêu
+    // ✨ LOGIC TẤN CÔNG ĐÃ TỐI ƯU ✨
     if (petRabbit.attackTimer > 0) {
-        petRabbit.attackTimer -= 1000 * globalDeltaTime; // Trừ đi thời gian của frame vừa qua
+        petRabbit.attackTimer -= 1000 * globalDeltaTime;
     }
 
-    // 2. Nếu đã hết thời gian hồi, tìm mục tiêu và tấn công
     if (petRabbit.attackTimer <= 0) {
-        const target = zombies
-            .filter(z => z.active)
-            .sort((a, b) => distance(petRabbit, a) - distance(petRabbit, b))[0];
+        let nearestZombie = null;
+        let minZombDistanceSq = Infinity;
+        
+        // Duyệt qua một lần để tìm zombie gần nhất
+        for (const zombie of zombies) {
+            if (!zombie.active) continue;
+            const distSq = distanceSq(petRabbit, zombie);
+            if (distSq < minZombDistanceSq) {
+                minZombDistanceSq = distSq;
+                nearestZombie = zombie;
+            }
+        }
 
-        if (target) {
-            // 3. Đặt lại thời gian hồi chiêu SAU KHI đã bắn
-            petRabbit.attackTimer = 1000; // <-- Hồi chiêu 1 giây (1000ms)
+        if (nearestZombie) {
+            petRabbit.attackTimer = 1000;
 
             const b = getBullet();
             b.x = petRabbit.x;
             b.y = petRabbit.y;
-            
-            const angle = Math.atan2(target.y - petRabbit.y, target.x - petRabbit.x);
+            // 🐛 Lỗi ở đây: cần dùng nearestZombie thay vì target
+            const angle = Math.atan2(nearestZombie.y - petRabbit.y, nearestZombie.x - petRabbit.x);
             b.dx = Math.cos(angle);
             b.dy = Math.sin(angle);
-            
             b.isPetBullet = true;
             b.icon = '🥕';
             b.speed = 2;
@@ -3773,8 +3818,7 @@ function updatePet() {
             bullets.push(b);
         }
     }
-    // ✨ KẾT THÚC LOGIC TẤN CÔNG ✨
-
+    
     // Hồi máu và hết giờ (giữ nguyên)
     if (now - petLastHealTime >= 3000) {
         petLastHealTime = now;
@@ -3965,7 +4009,7 @@ function updateSpatialIndex() {
    3) updateBlackHoles TỐI ƯU + GIỮ "CẢM GIÁC" BẢN CŨ
    - Bản cũ vô tình áp lực hút & damage 2 lần/frame.
    - Để GIỮ CẢM GIÁC: nhân hệ số bù, không nhân đôi vòng lặp.
-   - Không dùng .filter(); duyệt ngược + splice để xoá.
+   - duyệt ngược + splice để xoá.
    - Chỉ xét entity trong các cell giao với pullRadius.
    - Hạn chế Math.sqrt: chỉ sqrt khi chắc chắn trong phạm vi.
    - Tránh atan2/cos/sin: dùng vector chuẩn hoá (dx,dy)/d.
@@ -4971,7 +5015,7 @@ function skillUpdateClones(now) {
       const ang = Math.atan2(t.y - c.y, t.x - c.x), dist = Math.sqrt(d2(c.x, c.y, t.x, t.y));
       if (dist > 250) { c.x += Math.cos(ang)*c.moveSpeed; c.y += Math.sin(ang)*c.moveSpeed; }
       if (!c.lastShot) c.lastShot = 0; if (!c.shotCount) c.shotCount = 0;
-      if (now - c.lastShot >= 1000) {
+      if (now - c.lastShot >= 500) { // Tốc độ bắn clone
         c.lastShot = now; c.shotCount++;
         if (c.shotCount >= 3) {
           c.shotCount = 0; playSound('sfx-laser', 0.5);
@@ -5098,7 +5142,7 @@ function sysUpdateSpaceGate(now) {
     if (now > spaceGateEndTime) { spaceGateActive = false; spaceGate = null; }
     else {
       if (spaceGate.alpha < 1) spaceGate.alpha += 0.05; spaceGate.rotation += 0.04;
-      if (frame % 3 === 0) {
+      if (frame % 10 === 0) { // hạt cổng không gian
         createGateOrbitParticle(spaceGate);
         const PR = 80, KR = 25, PS = 1.8, PR2 = PR*PR, KR2 = KR*KR, BPS = PS*2.5;
         for (let i = 0; i < zombies.length; i++) { const z = zombies[i]; if (!z.active) continue;
@@ -5149,7 +5193,7 @@ function skillUpdateFairy(now) {
   for (let i = 0; i < fairies.length; i++) {
     const f = fairies[i]; f.angle += 0.02; const bob = Math.sin(frame*0.05 + f.bobOffset)*5;
     f.x = player.x + Math.cos(f.angle)*f.orbitRadius; f.y = player.y + Math.sin(f.angle)*f.orbitRadius + bob;
-    if (frame % 5 === 0) createFairyParticle(f.x, f.y);
+    if (frame % 30 === 0) createFairyParticle(f.x, f.y); // hạt của kỹ năng fairy
 
     if (!f.nextAttackTime) f.nextAttackTime = 0;
     if (now > f.nextAttackTime) {
@@ -5460,7 +5504,7 @@ function updateBigBossLazer(z, deltaTime) {
                             playSound('sfx-shield-block', 0.3); // 30% âm lượng
                             lastShieldBlockSoundTime = now;
                         }
-                        if (frame % 3 === 0) {
+                        if (frame % 5 === 0) {
                             createParticleExplosion(player.x, player.y, 2, 'smoke');
                         }
                     } else {
@@ -7286,7 +7330,7 @@ function drawBigBossLazer(ctx, z) {
     ctx.arc(0, 0, 28, 0, Math.PI * 2);
     ctx.fillStyle = "rgba(200,100,255,0.18)";
     ctx.shadowColor = "violet";
-    ctx.shadowBlur = 22;
+    ctx.shadowBlur = 20;
     ctx.fill();
     ctx.shadowBlur = 0;
     ctx.restore();
@@ -7307,7 +7351,7 @@ function drawBigBossLazer(ctx, z) {
     ctx.strokeStyle = "rgba(200, 100, 255, 0.7)";
     ctx.lineWidth = 8;
     ctx.shadowColor = "violet";
-    ctx.shadowBlur = 24;
+    ctx.shadowBlur = 20;
     ctx.beginPath();
     ctx.moveTo(0, 0);
     const lazerRange = 600; // Đảm bảo biến này có tồn tại
@@ -7357,7 +7401,7 @@ ctx.save();
 // ✨ Glow cho Boss hoặc MiniBoss
 if (z.isBoss || z.type === "miniBoss") {
   ctx.shadowColor = z.color || "#ffffff";
-  ctx.shadowBlur = z.isBoss ? 4 : 2;
+  ctx.shadowBlur = z.isBoss ? 8 : 4;
 } else {
   ctx.shadowColor = "transparent";
   ctx.shadowBlur = 0;
@@ -8397,30 +8441,33 @@ function drawLightningBolts() {
 }
 
 function drawBlackHole() {
-  // 📦 Lọc ra các máy bay sắp bị hút
-  const blackHolePlanes = activePlanes.filter(p => p.x > worldWidth - 200);
-
-  if (blackHolePlanes.length === 0) return; // ❌ Không có máy bay nào gần hố đen thì không vẽ
-
-  // 📍 Xác định vị trí hố đen dựa trên máy bay gần nhất
-  const blackHoleX = worldWidth - 100;
-
-  // 🎯 Tính trung bình độ cao các máy bay đang tới gần
-  const blackHoleY = blackHolePlanes.reduce((sum, p) => sum + p.y, 0) / blackHolePlanes.length;
-
-  // 🔵 Hiệu ứng phồng nhẹ
-  const pulse = Math.sin(Date.now() / 300);
-  const radius = 40 + pulse * 5;
-
-  // 🎨 Vẽ hố đen
-  ctx.save();
-  ctx.beginPath();
-  ctx.arc(blackHoleX, blackHoleY, radius, 0, Math.PI * 2);
-  ctx.fillStyle = "black";
-  ctx.shadowColor = "purple";
-  ctx.shadowBlur = 20;
-  ctx.fill();
-  ctx.restore();
+    let sumY = 0;
+    let planeCount = 0;
+    const BLACK_HOLE_X = worldWidth - 100;
+    const FILTER_X = worldWidth - 200;
+    // Duyệt qua một lần để vừa lọc máy bay vừa tính tổng vị trí Y
+    for (const p of activePlanes) {
+        if (p.x > FILTER_X) {
+            sumY += p.y;
+            planeCount++;
+        }
+    }
+    // ❌ Không có máy bay nào gần hố đen thì không vẽ
+    if (planeCount === 0) return;
+    // 🎯 Tính trung bình độ cao
+    const blackHoleY = sumY / planeCount;
+    // 🔵 Hiệu ứng phồng nhẹ
+    const pulse = Math.sin(Date.now() / 300);
+    const radius = 40 + pulse * 5;
+    // 🎨 Vẽ hố đen
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(BLACK_HOLE_X, blackHoleY, radius, 0, Math.PI * 2);
+    ctx.fillStyle = "black";
+    ctx.shadowColor = "purple";
+    ctx.shadowBlur = 20;
+    ctx.fill();
+    ctx.restore();
 }
 if (petRabbit && petActive) {
   const { x, y, radius } = petRabbit;
@@ -8563,7 +8610,7 @@ function drawEffects() {
         ctx.textAlign = "center";
         ctx.textBaseline = "middle";
         ctx.shadowColor = "cyan";
-        ctx.shadowBlur = 15;
+        ctx.shadowBlur = 8;
         ctx.fillStyle = 'white'; 
         ctx.fillText("🦋", fairy.x, fairy.y);
         ctx.restore();
@@ -8747,7 +8794,7 @@ if (bomb.exploded && bomb.shockwave) {
   ctx.arc(bomb.x, bomb.y, bomb.shockwaveRadius, 0, Math.PI * 2);
   ctx.strokeStyle = "rgba(255, 222, 44, 0.88)";   // Vàng tươi, gần như vàng nguyên chất
   ctx.lineWidth = 16;
-  ctx.shadowBlur = 32;
+  ctx.shadowBlur = 20;
   ctx.shadowColor = "#ffec70";
   ctx.globalAlpha = 0.58; // Đậm và rõ
   ctx.stroke();
@@ -8759,7 +8806,7 @@ if (bomb.exploded && bomb.shockwave) {
   ctx.arc(bomb.x, bomb.y, bomb.shockwaveRadius + 8, 0, Math.PI * 2);
   ctx.strokeStyle = "rgba(255,255,180,0.73)";
   ctx.lineWidth = 7;
-  ctx.shadowBlur = 28;
+  ctx.shadowBlur = 20;
   ctx.shadowColor = "#fffbe2";
   ctx.globalAlpha = 0.45;
   ctx.stroke();
@@ -9627,63 +9674,92 @@ function isOverLimit(upgrade){
 
 /* ========= POPUP ========= */
 function showSkillLevelUpPopup() {
-  isPaused = true; // ⏸️
-  const popup = document.getElementById('skillPopup');
-  
-  // Sửa lỗi: Lấy đúng container của popup kỹ năng thay vì popup nâng cấp wave
-  const container = document.getElementById('skillChoices'); 
-  container.innerHTML = '';
+    isPaused = true;
+    const popup = document.getElementById('skillPopup');
+    const container = document.getElementById('skillChoices');
+    container.innerHTML = '';
 
-  /* 1️⃣ Lọc kỹ năng chưa học & nâng cấp hợp lệ */
-  // THAY ĐỔI CỐT LÕI NẰM Ở ĐÂY
-  // Lọc các kỹ năng chưa học VÀ người chơi đã đủ cấp độ yêu cầu
-  const unlearned = skillsData.filter((skill, index) => {
-    const requiredLevel = index + 1; // Skill ở vị trí 0 -> yêu cầu lv 1, vị trí 1 -> yêu cầu lv 2, ...
-    return player.level >= requiredLevel && !activeSkills.includes(skill);
-  });
-  
-  const upgrades = activeSkills
-    .flatMap(sk => (sk.upgrades || []).map(up => ({ ...up, skillName: sk.name })))
-    .filter(up => !isOverLimit(up)); // bỏ gói max
+    const newSkills = [];
+    const upgradesBySkill = {};
 
-  /* 2️⃣ Ghép pool & chọn 3 lựa chọn */
-  let choices;
-  if (unlearned.length) { // Luôn ưu tiên có ≥1 skill mới nếu có thể
-    const pickNew = rand(unlearned);
-    const pool = [...unlearned.filter(s => s !== pickNew), ...upgrades];
-    choices = [pickNew, ...shuffle(pool).slice(0, 2)];
-  } else { // Đã học hết các kỹ năng có thể học ở level hiện tại
-    const unique = {}; // mỗi skill 1 upgrade ngẫu nhiên
-    upgrades.forEach(up => (unique[up.skillName] ||= []).push(up));
-    choices = shuffle(Object.values(unique).map(rand)).slice(0, 3);
-  }
+    // 1. Duyệt qua TẤT CẢ kỹ năng trong một vòng lặp duy nhất để thu thập các lựa chọn
+    for (const skill of skillsData) {
+        // Kiểm tra kỹ năng mới có thể học
+        const requiredLevel = skillsData.indexOf(skill) + 1;
+        if (!activeSkills.includes(skill) && player.level >= requiredLevel) {
+            newSkills.push(skill);
+        }
 
-  /* 3️⃣ Render nút bấm */
-  choices.forEach(ch => {
-    const btn = document.createElement('button');
-    if (ch.icon){
-      btn.textContent = `${ch.icon} ${ch.name}`;
-      btn.onclick = () => {
-        playSound('sfx-upgrade-select'); // <-- THÊM ÂM THANH
-        learnSkill(skillsData.indexOf(ch));
-        popup.style.display = 'none';
-        isPaused = false;
-      };
-    } else {
-      btn.textContent = ch.name;
-      btn.style.borderColor = {Bạc:'#aaa',Vàng:'gold',Kim:'#c770ff',Đỏ:'red'}[ch.tier] || '#ccc';
-      btn.onclick = () => {
-        playSound('sfx-upgrade-select'); // <-- THÊM ÂM THANH
-        ch.effect?.();
-        showWarning(` ${ch.name}`);
-        popup.style.display = 'none';
-        isPaused = false;
-      };
+        // Lấy các nâng cấp của kỹ năng đã học
+        const activeSkill = activeSkills.find(s => s.name === skill.name);
+        if (activeSkill && skill.upgrades) {
+            upgradesBySkill[skill.name] = upgradesBySkill[skill.name] || [];
+            for (const upgrade of skill.upgrades) {
+                if (!isOverLimit(upgrade)) {
+                    upgradesBySkill[skill.name].push({ ...upgrade, skillName: skill.name });
+                }
+            }
+        }
     }
-    container.appendChild(btn);
-  });
 
-  popup.style.display = 'block';
+    // 2. Chọn 3 lựa chọn từ các pool đã thu thập
+    let choices = [];
+    if (newSkills.length > 0) {
+        // Ưu tiên 1 kỹ năng mới
+        const newSkillIndex = Math.floor(Math.random() * newSkills.length);
+        const pickNew = newSkills[newSkillIndex];
+        choices.push(pickNew);
+
+        // Tạo pool để chọn 2 nâng cấp còn lại
+        const pool = [];
+        // Thêm các kỹ năng mới còn lại vào pool
+        for (let i = 0; i < newSkills.length; i++) {
+            if (i !== newSkillIndex) {
+                pool.push(newSkills[i]);
+            }
+        }
+        // Thêm các nâng cấp vào pool
+        for (const skillName in upgradesBySkill) {
+            const upgrades = upgradesBySkill[skillName];
+            if (upgrades.length > 0) {
+                const randomUpgrade = upgrades[Math.floor(Math.random() * upgrades.length)];
+                pool.push(randomUpgrade);
+            }
+        }
+        shuffle(pool).slice(0, 2).forEach(choice => choices.push(choice));
+
+    } else {
+        // Nếu không có kỹ năng mới, chọn ngẫu nhiên 3 nâng cấp
+        const uniqueUpgrades = Object.values(upgradesBySkill).map(upgrades => upgrades[Math.floor(Math.random() * upgrades.length)]);
+        choices = shuffle(uniqueUpgrades).slice(0, 3);
+    }
+
+    // 3. Render nút bấm
+    choices.forEach(ch => {
+        const btn = document.createElement('button');
+        if (ch.icon) { // Đây là kỹ năng mới
+            btn.textContent = `${ch.icon} ${ch.name}`;
+            btn.onclick = () => {
+                playSound('sfx-upgrade-select');
+                learnSkill(skillsData.indexOf(ch));
+                popup.style.display = 'none';
+                isPaused = false;
+            };
+        } else { // Đây là nâng cấp
+            btn.textContent = ch.name;
+            btn.style.borderColor = { Bạc: '#aaa', Vàng: 'gold', Kim: '#c770ff', Đỏ: 'red' }[ch.tier] || '#ccc';
+            btn.onclick = () => {
+                playSound('sfx-upgrade-select');
+                ch.effect?.();
+                showWarning(` ${ch.name}`);
+                popup.style.display = 'none';
+                isPaused = false;
+            };
+        }
+        container.appendChild(btn);
+    });
+
+    popup.style.display = 'block';
 }
 
 // 🧾 Cập nhật thông tin thống kê trong overlay
@@ -10053,7 +10129,7 @@ function activateSkill(skill) {
   // Gán thời gian kết thúc hồi chiêu vào chính đối tượng skill
   skill.endTime = Date.now() + skill.duration;
 
-  // Logic kích hoạt hiệu ứng của kỹ năng (giữ nguyên)
+  // Logic kích hoạt hiệu ứng của kỹ năng
   switch (skill.name) {
     case "Khiên bảo vệ": activateShield(skill); break;
     case "Vệ tinh laze":
@@ -10062,8 +10138,8 @@ function activateSkill(skill) {
       satelliteEndTime = Date.now() + skill.duration;
       
       const satCount = Math.min(skill.level || 1, 2);
-      const orbitRadius = 60; // Bạn có thể chỉnh bán kính quay ở đây
-      const orbitSpeed = 0.002; // Bạn có thể chỉnh tốc độ quay ở đây
+      const orbitRadius = 60; // chỉnh bán kính quay ở đây
+      const orbitSpeed = 0.002; // chỉnh tốc độ quay ở đây
 
       satellites = []; // Xóa các vệ tinh cũ
       for (let i = 0; i < satCount; i++) {
@@ -10124,53 +10200,82 @@ function activateShield(skill) {
 }
 
 // 🚀 Tên lửa F18: 2 tên lửa bay quanh người chơi, xuyên và gây sát thương zombie
+// ===== Twin Missiles (tối ưu, không filter/sort) =====
+
+// Buffer tạm dùng lại cho lần gọi sau (giảm GC):
+const twinTmpTargets = []; // sẽ chỉ chứa tối đa K phần tử { z, d2 }
+
+// Chọn tối đa K zombie xa người chơi nhất trong bán kính TWIN_R (một pass, không sort)
+function selectFarthestKZombies(K, R, outArr) {
+  outArr.length = 0;                // tái dùng mảng, không cấp phát mảng mới
+  const R2 = R * R;
+
+  for (let i = 0; i < zombies.length; i++) {
+    const z = zombies[i];
+    if (!z || !z.active) continue;
+
+    const dx = z.x - player.x, dy = z.y - player.y;
+    const d2 = dx * dx + dy * dy;
+    if (d2 > R2) continue;          // ngoài tầm → bỏ
+
+    // chen vào outArr (sắp xếp giảm d2) với kích thước tối đa K
+    if (outArr.length < K) {
+      // chèn giữ thứ tự giảm d2
+      let j = outArr.length - 1;
+      outArr.push(null);            // mở rộng mảng trước khi dịch
+      while (j >= 0 && outArr[j].d2 < d2) { outArr[j + 1] = outArr[j]; j--; }
+      outArr[j + 1] = { z, d2 };    // (tối đa K entry → cấp phát tối đa K object)
+    } else if (outArr[outArr.length - 1].d2 < d2) {
+      // lớn hơn phần tử nhỏ nhất hiện có → chèn vào đúng vị trí
+      let j = outArr.length - 1;
+      while (j > 0 && outArr[j - 1].d2 < d2) { outArr[j] = outArr[j - 1]; j--; }
+      outArr[j] = { z, d2 };
+    }
+  }
+}
+
 function activateTwinMissiles(skill) {
-const createMissilePair = () => {
-    // 1. Lọc ra những zombie còn sống và trong phạm vi 360px quanh người chơi
-    const potentialTargets = zombies.filter(z => z.active && distance(player, z) <= 360);
+  const K = Math.min(skill.level || 1, 5); // tối đa 5 mục tiêu/đợt
+  const TWIN_R = 360;                      // bán kính quét mục tiêu
+  const MISSILE_RADIUS = 40;               // bán ra vòng tròn quanh player
+  const SPAWN_DELAY = 2000;                // ms giữa các đợt
+  const LIFE_TIME = skill.duration;        // tổng thời gian hiệu lực
 
-    // 2. Nếu không có mục tiêu nào trong tầm, không làm gì cả
-    if (potentialTargets.length === 0) return;
+  // Hàm tạo 1 đợt tên lửa
+  const spawnWave = () => {
+    selectFarthestKZombies(K, TWIN_R, twinTmpTargets);
+    const count = twinTmpTargets.length;
+    if (count === 0) return;
 
-    // 3. Sắp xếp các mục tiêu để tìm ra con xa nhất
-potentialTargets.sort((a, b) => distance(player, b) - distance(player, a));
-// Bây giờ potentialTargets là một danh sách đã được sắp xếp từ xa đến gần
+    for (let i = 0; i < count; i++) {
+      const target = twinTmpTargets[i].z;
 
-// Lấy số lượng tên lửa từ cấp kỹ năng
-const missileCount = Math.min(skill.level || 1, 5);
-for (let i = 0; i < missileCount; i++) {
-    // Nếu không còn đủ mục tiêu trong danh sách, dừng tạo tên lửa
-    if (i >= potentialTargets.length) break;
+      // vị trí xuất phát ngẫu nhiên quanh player (bo tròn nhẹ)
+      const ang = Math.random() * Math.PI * 2;
+      const x = player.x + Math.cos(ang) * MISSILE_RADIUS;
+      const y = player.y + Math.sin(ang) * MISSILE_RADIUS;
 
-    // THAY ĐỔI: Gán mỗi tên lửa cho một mục tiêu khác nhau theo thứ tự từ xa đến gần
-    const target = potentialTargets[i]; 
-    
-    const angleOffset = Math.random() * Math.PI * 2;
-    const radius = 40;
-    const x = player.x + Math.cos(angleOffset) * radius;
-    const y = player.y + Math.sin(angleOffset) * radius;
-
-    missiles.push({
+      // Nếu có missile pool, thay block dưới bằng getMissile()
+      missiles.push({
         x, y,
-        dx: 0,
-        dy: 0,
-        target, // <-- Mỗi tên lửa giờ đã có mục tiêu riêng
+        dx: 0, dy: 0,
+        target,                 // mục tiêu riêng cho missile này
         damage: skill.baseDamage,
-        delay: 120,
+        delay: 120,             // giữ logic delay của bạn
         state: "delay",
         startX: x,
         startY: y,
-        hitSet: new Set()
-    });
-}
-};
+        hitSet: new Set(),      // cần theo dõi đã chạm ai; nếu không cần, bỏ để giảm cấp phát
+      });
+    }
+  };
 
-// 🟢 Tạo NGAY lập tức
-  createMissilePair();
+  // 🔵 Tạo ngay 1 đợt đầu
+  spawnWave();
 
-// ⏱ Sau đó tiếp tục tạo mỗi 2s
-  const interval = setInterval(createMissilePair, 2000);
-  setTimeout(() => clearInterval(interval), skill.duration);
+  // ⏱ Lặp lại đến khi hết thời gian kỹ năng
+  const intervalId = setInterval(spawnWave, SPAWN_DELAY);
+  setTimeout(() => clearInterval(intervalId), LIFE_TIME);
 }
 
 // UFO tấn công
@@ -10678,53 +10783,58 @@ function activateBloodOrb(skill) {
 
 // Hàm tìm một vị trí an toàn để dịch chuyển đến
 function findSafeTeleportLocation() {
-    let bestLocation = null;
-    let lowestZombieCount = Infinity;
-    const MAX_ATTEMPTS = 20; // Thử tìm 20 lần và chọn điểm tốt nhất
+  let bestX = player.x, bestY = player.y;
+  let lowestZombieCount = Infinity;
 
-    const bosses = zombies.filter(z => z.isBoss || z.isBigBoss);
+  const MAX_ATTEMPTS = 20;
+  const padding = 100;
+  const BOSS_R2   = 500 * 500;  // khoảng cách tối thiểu với boss (bình phương)
+  const ZOMBIE_R2 = 300 * 300;  // bán kính đếm zombie (bình phương)
 
-    for (let i = 0; i < MAX_ATTEMPTS; i++) {
-        // Tạo vị trí ngẫu nhiên trong bản đồ, trừ đi vùng rìa
-        const padding = 100;
-        const x = Math.random() * (worldWidth - padding * 2) + padding;
-        const y = Math.random() * (worldHeight - padding * 2) + padding;
-        
-        let isValid = true;
+  for (let i = 0; i < MAX_ATTEMPTS; i++) {
+    // điểm ngẫu nhiên, tránh rìa
+    const x = Math.random() * (worldWidth  - padding * 2) + padding;
+    const y = Math.random() * (worldHeight - padding * 2) + padding;
 
-        // 1. Kiểm tra khoảng cách với Boss
-        for (const boss of bosses) {
-            if (distance({x, y}, boss) < 500) {
-                isValid = false;
-                break;
-            }
-        }
-        if (!isValid) continue; // Bỏ qua vị trí này nếu quá gần boss
+    let isValid = true;
+    let nearbyZombies = 0;
 
-        // 2. Đếm số lượng zombie xung quanh
-        let nearbyZombies = 0;
-        for (const z of zombies) {
-            if (distance({x, y}, z) < 300) {
-                nearbyZombies++;
-            }
-        }
+    // 1 vòng lặp duy nhất cho cả check boss + đếm zombie
+    for (let j = 0; j < zombies.length; j++) {
+      const z = zombies[j];
+      if (!z || !z.active) continue;
 
-        // 3. Chọn vị trí có ít zombie nhất
-        if (nearbyZombies < lowestZombieCount) {
-            lowestZombieCount = nearbyZombies;
-            bestLocation = { x, y };
-        }
+      const dx = x - z.x;
+      const dy = y - z.y;
+      const d2 = dx*dx + dy*dy;
+
+      // gần boss → loại ngay, không cần đếm tiếp
+      if ((z.isBoss || z.isBigBoss) && d2 < BOSS_R2) { isValid = false; break; }
+      if (d2 < ZOMBIE_R2) nearbyZombies++;
     }
 
-    // Nếu không tìm được vị trí nào, trả về một vị trí ngẫu nhiên xa người chơi
-    if (!bestLocation) {
-        return {
-            x: Math.random() * worldWidth,
-            y: Math.random() * worldHeight
-        };
+    if (!isValid) continue;
+
+    if (nearbyZombies < lowestZombieCount) {
+      lowestZombieCount = nearbyZombies;
+      bestX = x; bestY = y;
+      if (nearbyZombies === 0) break; // tìm được chỗ “trống” → thoát sớm
     }
-    
-    return bestLocation;
+  }
+
+  // Không tìm được gì tốt → fallback hợp lý hơn: ngẫu nhiên xa người chơi và tránh rìa
+  if (lowestZombieCount === Infinity) {
+    const angle = Math.random() * Math.PI * 2;
+    const r = Math.min(worldWidth, worldHeight) * 0.35;
+    const fx = player.x + Math.cos(angle) * r;
+    const fy = player.y + Math.sin(angle) * r;
+    return {
+      x: Math.max(padding, Math.min(worldWidth  - padding, fx)),
+      y: Math.max(padding, Math.min(worldHeight - padding, fy))
+    };
+  }
+
+  return { x: bestX, y: bestY };
 }
 
 // Hàm tạo một cổng mới
@@ -10865,7 +10975,7 @@ function populateDebugMenu() {
     };
 
     // Chỉ số cơ bản & game
-    document.getElementById('debug-exp').value = player.exp;
+    document.getElementById('debug-exp').value = player.currentLevelExp;
     setSliderValue('debug-wave', wave);
     setSliderValue('debug-dayTime', (dayTime * 24).toFixed(1));
     setSliderValue('debug-level', player.level);
@@ -10912,7 +11022,18 @@ function populateDebugMenu() {
 
 // HÀM CẬP NHẬT: Áp dụng các thay đổi
 function applyDebugChanges() {
-    // Chỉ số cơ bản & game (giữ nguyên)
+  // đọc giá trị từ UI
+  const lvl   = parseInt(document.getElementById('debug-level').value) || 1;
+  const expUI = parseInt(document.getElementById('debug-exp').value)   || 0;
+
+  // 1) cập nhật level trước, rồi tính lại requiredExp
+  player.level = lvl;
+  player.requiredExp = calculateRequiredExp(player.level); // dùng đúng hàm hiện có【turn6file9†index.html†L34-L47】
+
+  // 2) đồng bộ EXP: tổng & EXP của cấp hiện tại
+  player.currentLevelExp = expUI;
+  player.exp = expUI;
+    // Chỉ số cơ bản & game
     player.exp = parseInt(document.getElementById('debug-exp').value);
     wave = parseInt(document.getElementById('debug-wave').value);
     dayTime = parseFloat(document.getElementById('debug-dayTime').value) / 24;
@@ -10929,7 +11050,7 @@ function applyDebugChanges() {
     playerUpgrades.lineBulletCount = parseInt(document.getElementById('debug-lineCount').value);
     player.coins = parseInt(document.getElementById('debug-coin').value);
 
-    // Chỉ số kỹ năng passive (giữ nguyên)
+    // Chỉ số kỹ năng passive
     skillUpgrades.bladeCount = parseInt(document.getElementById('debug-bladeCount').value);
     skillUpgrades.bladeDamage = parseFloat(document.getElementById('debug-bladeDamage').value);
     skillUpgrades.swordLevel = parseInt(document.getElementById('debug-swordLevel').value);
@@ -10984,6 +11105,7 @@ function applyDebugChanges() {
 
     updateUI();
     updateStatsOverlay();
+    sysPickupItemsAndLevel(Date.now());
     // QUAN TRỌNG: Gọi updateSkillsList() ở cuối để làm mới giao diện kỹ năng và tooltip
     updateSkillsList(); 
     showWarning('🔧 Các chỉ số đã được cập nhật!');
