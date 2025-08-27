@@ -1078,7 +1078,7 @@ button.active {
 .shop-grid {
   display: grid;
   /* THAY ĐỔI: Giới hạn chiều rộng tối thiểu và tối đa của mỗi ô */
-  grid-template-columns: repeat(auto-fill, minmax(8rem, 1fr)); 
+  grid-template-columns: repeat(auto-fill, minmax(6rem, 1fr)); 
   gap: 0.75rem;
   margin-bottom: 1.5rem;
   max-height: 50vh;
@@ -1120,7 +1120,7 @@ button.active {
 }
 
 .shop-item button {
-  min-width: 8rem; /* Đảm bảo nút không quá nhỏ */
+  min-width: 6rem; /* Đảm bảo nút không quá nhỏ */
   padding: 0.5rem 1rem;
   /* THAY ĐỔI: Giảm padding để thu nhỏ nút bấm */
   margin: 0 auto; 
@@ -1347,7 +1347,7 @@ button.active {
   <div class="infoContent">
     <p>Phiên bản: 1.2<br>
        Tác giả: Dang<br>
-       Cập nhật: 2025-07-31</p>
+       Cập nhật: 2025-08-27</p>
     <p style="margin: 0; text-align: left;"><strong style="color: #00cc66;">🆕 New</strong></p>
     <!-- Phần có thể cuộn và canh trái -->
     <div style="max-height: 128px;overflow-y: auto;scrollbar-width: none;
@@ -1633,6 +1633,86 @@ const shopItems = [
     { id: 'buy_12_hp',      name: '12 HP',      icon: '❤️', cost: 2, type: 'resource', value: 12 },
     { id: 'buy_damage',    name: 'Sát thương +0.2', icon: '💥', cost: 3, type: 'permanent_upgrade', value: 0.2 },
     // Bạn có thể thêm các vật phẩm khác vào đây
+    { id: 'buy_lucky',   name: 'Buff Lucky',   icon: '🍀', cost: 15, type: 'buff' },
+    { id: 'buy_power',   name: 'Buff Power',   icon: '🍁', cost: 15, type: 'buff' },
+    { id: 'buy_crazy',   name: 'Buff Crazy',   icon: '🍂', cost: 15, type: 'buff' },
+    { id: 'buy_exp',     name: 'Buff EXP',     icon: '🌿', cost: 15, type: 'buff' },
+    { id: 'buy_magnet',  name: 'Buff Magnet',  icon: '🧲', cost: 10, type: 'buff' },
+    { id: 'buy_madness', name: 'Buff Madness', icon: '💢', cost: 25, type: 'buff' },
+    // --- Nâng cấp Đao ---
+{ id: 'buy_blade_dmg_1', name: 'Dmg +0.2', icon: '🔪', cost: 5, type: 'skill_damage_upgrade', value: 0.2, skillTarget: 'bladeDamage' },
+{ id: 'buy_blade_dmg_2', name: 'Dmg +0.5', icon: '🔪', cost: 10, type: 'skill_damage_upgrade', value: 0.5, skillTarget: 'bladeDamage' },
+{ id: 'buy_blade_dmg_3', name: 'Dmg +1',   icon: '🔪', cost: 18, type: 'skill_damage_upgrade', value: 1,   skillTarget: 'bladeDamage' },
+
+// --- Nâng cấp Kiếm ---
+{ id: 'buy_sword_dmg_1', name: 'Dmg +0.2', icon: '⚔️', cost: 5, type: 'skill_damage_upgrade', value: 0.2, skillTarget: 'swordDamage' },
+{ id: 'buy_sword_dmg_2', name: 'Dmg +0.5', icon: '⚔️', cost: 10, type: 'skill_damage_upgrade', value: 0.5, skillTarget: 'swordDamage' },
+{ id: 'buy_sword_dmg_3', name: 'Dmg +1',   icon: '⚔️', cost: 18, type: 'skill_damage_upgrade', value: 1,   skillTarget: 'swordDamage' },
+
+// --- Nâng cấp Lửa ---
+{ id: 'buy_fire_dmg_1', name: 'Dmg +0.2', icon: '🔥', cost: 5, type: 'skill_damage_upgrade', value: 0.2, skillTarget: 'fireDamage' },
+{ id: 'buy_fire_dmg_2', name: 'Dmg +0.5', icon: '🔥', cost: 10, type: 'skill_damage_upgrade', value: 0.5, skillTarget: 'fireDamage' },
+{ id: 'buy_fire_dmg_3', name: 'Dmg +1',   icon: '🔥', cost: 18, type: 'skill_damage_upgrade', value: 1,   skillTarget: 'fireDamage' },
+
+// --- Nâng cấp Băng ---
+{ id: 'buy_ice_dmg_1', name: 'Dmg +0.2', icon: '❄️', cost: 5, type: 'skill_damage_upgrade', value: 0.2, skillTarget: 'iceDamage' },
+{ id: 'buy_ice_dmg_2', name: 'Dmg +0.5', icon: '❄️', cost: 10, type: 'skill_damage_upgrade', value: 0.5, skillTarget: 'iceDamage' },
+{ id: 'buy_ice_dmg_3', name: 'Dmg +1',   icon: '❄️', cost: 18, type: 'skill_damage_upgrade', value: 1,   skillTarget: 'iceDamage' },
+
+// --- Nâng cấp Lôi ---
+{ id: 'buy_thunder_dmg_1', name: 'Dmg +0.2', icon: '🔵', cost: 5, type: 'skill_damage_upgrade', value: 0.2, skillTarget: 'thunderDamage' },
+{ id: 'buy_thunder_dmg_2', name: 'Dmg +0.5', icon: '🔵', cost: 10, type: 'skill_damage_upgrade', value: 0.5, skillTarget: 'thunderDamage' },
+{ id: 'buy_thunder_dmg_3', name: 'Dmg +1',   icon: '🔵', cost: 18, type: 'skill_damage_upgrade', value: 1,   skillTarget: 'thunderDamage' },
+// --- Nâng cấp Vệ tinh laze ---
+{ id: 'buy_satellite_dmg_1', name: 'Dmg +0.2', icon: '🛰️', cost: 7, type: 'active_skill_damage_upgrade', value: 0.2, skillName: 'Vệ tinh laze' },
+{ id: 'buy_satellite_dmg_2', name: 'Dmg +0.5', icon: '🛰️', cost: 14, type: 'active_skill_damage_upgrade', value: 0.5, skillName: 'Vệ tinh laze' },
+{ id: 'buy_satellite_dmg_3', name: 'Dmg +1',   icon: '🛰️', cost: 25, type: 'active_skill_damage_upgrade', value: 1,   skillName: 'Vệ tinh laze' },
+
+// --- Nâng cấp Tên lửa F18 ---
+{ id: 'buy_missile_dmg_1', name: 'Dmg +0.2', icon: '🚀', cost: 7, type: 'active_skill_damage_upgrade', value: 0.2, skillName: 'Tên lửa F18' },
+{ id: 'buy_missile_dmg_2', name: 'Dmg +0.5', icon: '🚀', cost: 14, type: 'active_skill_damage_upgrade', value: 0.5, skillName: 'Tên lửa F18' },
+{ id: 'buy_missile_dmg_3', name: 'Dmg +1',   icon: '🚀', cost: 25, type: 'active_skill_damage_upgrade', value: 1,   skillName: 'Tên lửa F18' },
+
+// --- Nâng cấp UFO tấn công ---
+{ id: 'buy_ufo_dmg_1', name: 'Dmg +0.2', icon: '🛸', cost: 7, type: 'active_skill_damage_upgrade', value: 0.2, skillName: 'UFO tấn công' },
+{ id: 'buy_ufo_dmg_2', name: 'Dmg +0.5', icon: '🛸', cost: 14, type: 'active_skill_damage_upgrade', value: 0.5, skillName: 'UFO tấn công' },
+{ id: 'buy_ufo_dmg_3', name: 'Dmg +1',   icon: '🛸', cost: 25, type: 'active_skill_damage_upgrade', value: 1,   skillName: 'UFO tấn công' },
+
+// --- Nâng cấp Bão sét ---
+{ id: 'buy_lightning_dmg_1', name: 'Dmg +0.2', icon: '🌩️', cost: 7, type: 'active_skill_damage_upgrade', value: 0.2, skillName: 'Bão sét' },
+{ id: 'buy_lightning_dmg_2', name: 'Dmg +0.5', icon: '🌩️', cost: 14, type: 'active_skill_damage_upgrade', value: 0.5, skillName: 'Bão sét' },
+{ id: 'buy_lightning_dmg_3', name: 'Dmg +1',   icon: '🌩️', cost: 25, type: 'active_skill_damage_upgrade', value: 1,   skillName: 'Bão sét' },
+
+// --- Nâng cấp Bom B52 ---
+{ id: 'buy_b52_dmg_1', name: 'Dmg +0.2', icon: '💣', cost: 7, type: 'active_skill_damage_upgrade', value: 0.2, skillName: 'Bom B52' },
+{ id: 'buy_b52_dmg_2', name: 'Dmg +0.5', icon: '💣', cost: 14, type: 'active_skill_damage_upgrade', value: 0.5, skillName: 'Bom B52' },
+{ id: 'buy_b52_dmg_3', name: 'Dmg +1',   icon: '💣', cost: 25, type: 'active_skill_damage_upgrade', value: 1,   skillName: 'Bom B52' },
+
+// --- Nâng cấp Ảo ảnh phân thân ---
+{ id: 'buy_clone_dmg_1', name: 'Dmg +0.2', icon: '🎭', cost: 7, type: 'active_skill_damage_upgrade', value: 0.2, skillName: 'Ảo ảnh phân thân' },
+{ id: 'buy_clone_dmg_2', name: 'Dmg +0.5', icon: '🎭', cost: 14, type: 'active_skill_damage_upgrade', value: 0.5, skillName: 'Ảo ảnh phân thân' },
+{ id: 'buy_clone_dmg_3', name: 'Dmg +1',   icon: '🎭', cost: 25, type: 'active_skill_damage_upgrade', value: 1,   skillName: 'Ảo ảnh phân thân' },
+
+// --- Nâng cấp Hố đen ---
+{ id: 'buy_blackhole_dmg_1', name: 'Dmg +0.2', icon: '🕳️', cost: 7, type: 'active_skill_damage_upgrade', value: 0.2, skillName: 'Hố đen' },
+{ id: 'buy_blackhole_dmg_2', name: 'Dmg +0.5', icon: '🕳️', cost: 14, type: 'active_skill_damage_upgrade', value: 0.5, skillName: 'Hố đen' },
+{ id: 'buy_blackhole_dmg_3', name: 'Dmg +1',   icon: '🕳️', cost: 25, type: 'active_skill_damage_upgrade', value: 1,   skillName: 'Hố đen' },
+
+// --- Nâng cấp Boom hạt nhân ---
+{ id: 'buy_nuke_dmg_1', name: 'Dmg +10', icon: '☢️', cost: 10, type: 'active_skill_damage_upgrade', value: 10, skillName: 'Boom hạt nhân' },
+{ id: 'buy_nuke_dmg_2', name: 'Dmg +25', icon: '☢️', cost: 20, type: 'active_skill_damage_upgrade', value: 25, skillName: 'Boom hạt nhân' },
+{ id: 'buy_nuke_dmg_3', name: 'Dmg +50', icon: '☢️', cost: 35, type: 'active_skill_damage_upgrade', value: 50, skillName: 'Boom hạt nhân' },
+
+// --- Nâng cấp Quả cầu hấp huyết ---
+{ id: 'buy_bloodorb_dmg_1', name: 'Dmg +0.2', icon: '🩸', cost: 7, type: 'active_skill_damage_upgrade', value: 0.2, skillName: 'Quả cầu hấp huyết' },
+{ id: 'buy_bloodorb_dmg_2', name: 'Dmg +0.5', icon: '🩸', cost: 14, type: 'active_skill_damage_upgrade', value: 0.5, skillName: 'Quả cầu hấp huyết' },
+{ id: 'buy_bloodorb_dmg_3', name: 'Dmg +1',   icon: '🩸', cost: 25, type: 'active_skill_damage_upgrade', value: 1,   skillName: 'Quả cầu hấp huyết' },
+
+// --- Nâng cấp Cổng Không Gian ---
+{ id: 'buy_spacegate_dmg_1', name: 'Dmg +0.2', icon: '🌀', cost: 7, type: 'active_skill_damage_upgrade', value: 0.2, skillName: 'Cổng Không Gian' },
+{ id: 'buy_spacegate_dmg_2', name: 'Dmg +0.5', icon: '🌀', cost: 14, type: 'active_skill_damage_upgrade', value: 0.5, skillName: 'Cổng Không Gian' },
+{ id: 'buy_spacegate_dmg_3', name: 'Dmg +1',   icon: '🌀', cost: 25, type: 'active_skill_damage_upgrade', value: 1,   skillName: 'Cổng Không Gian' },
+
 ];
 // ✨ DANH SÁCH CÁC LOẠI ZOMBIE ✨
 const zombieTypes = [
@@ -1650,7 +1730,7 @@ const zombieTypes = [
 ];
 let lastBigBossTimerUpdate = performance.now();
 let bigBossRespawnTimer = 0;
-const bigBossRespawnInterval = 10; // Thời gian hồi sinh bigboss - giây
+const bigBossRespawnInterval = 120; // Thời gian hồi sinh bigboss - giây
 // TẠO BIẾN CHỨA KHO ÂM THANH
 const sfxPool = {}; // Mỗi key là một ID âm thanh, value là một mảng các đối tượng Audio
 
@@ -4734,7 +4814,7 @@ function sysPickupItemsAndLevel(now) {
         case 'crazymadnesstime': crazyMadnessTimeEndTime = now + 30000; playSound('sfx-powerup',0.8); break;
         case 'secret': activateSecretItem(it); playSound('sfx-powerup',0.8); break;
         case 'expBonus': activateExpBonusItem(); playSound('sfx-powerup',0.8); break;
-        case 'coin':   player.coins += 1;  queuePlayerLootPopup("🪙"); break;
+        case 'coin':   player.coins += 1;  queuePlayerLootPopup("🪙"); playSound('sfx-pickup-coin', 0.5); break;
         case 'energy': player.energy += 1; queuePlayerLootPopup("⚡"); break;
         case 'mana':   player.mana += 1;   queuePlayerLootPopup("💠"); break;
         case 'hp':     player.hearts += 1; createHealImpactEffect(player, 1); queuePlayerLootPopup("❤️"); break;
@@ -6680,7 +6760,7 @@ ctx.textAlign = "center";
 ctx.textBaseline = "bottom";
 ctx.fillText(player.name, player.x, player.y - player.size - 4); // Vẽ tên trên đầu player
 // --- BẮT ĐẦU: Vẽ chữ hiệu ứng trên đầu player ---
-    let buffTextYOffset = player.y - player.size - 20;
+/*    let buffTextYOffset = player.y - player.size - 20;
     ctx.font = "0.8rem sans-serif";
     ctx.textAlign = "center";
     
@@ -6733,7 +6813,7 @@ ctx.fillText(player.name, player.x, player.y - player.size - 4); // Vẽ tên tr
         ctx.fillText("🍀 LuckyUp", player.x, buffTextYOffset);
     }
 
-    ctx.shadowBlur = 0; // Reset hiệu ứng
+    ctx.shadowBlur = 0; // Reset hiệu ứng */
     // --- KẾT THÚC: Vẽ chữ hiệu ứng trên đầu player ---
 ctx.shadowBlur = 0; // reset sau khi vẽ
 ctx.shadowColor = "transparent";
@@ -7710,134 +7790,142 @@ switch (z.style) {
 
 // ⚡ Hiệu ứng điện động khi bị stun bởi lôi
 if (z.stunnedByThunder && Date.now() < z.stunnedThunderUntil) {
-  // Hiệu ứng tia điện động
-  ctx.save();
-  ctx.strokeStyle = "#00ffff"; // Xanh điện sáng hơn
-  ctx.lineWidth = 1;
-  ctx.shadowColor = "#00ffff";
-  ctx.shadowBlur = 8;
-  for (let i = 0; i < 2; i++) {
-    const angle = Math.random() * Math.PI * 2;
-    const r1 = z.radius + 2;
-    const r2 = z.radius + 4 + Math.random() * 4;
-    ctx.beginPath();
-    ctx.moveTo(z.x + Math.cos(angle) * r1, z.y + Math.sin(angle) * r1);
-    ctx.lineTo(z.x + Math.cos(angle) * r2, z.y + Math.sin(angle) * r2);
-    ctx.stroke();
-  }
-  ctx.restore();
-
-  // Hiện chữ "CHOÁNG" nổi bật trên đầu
-  ctx.save();
-  ctx.font = "0.8rem Arial";
-  ctx.textAlign = "center";
-  ctx.textBaseline = "bottom";
-  ctx.fillStyle = "#00ffff";
-  ctx.shadowColor = "#00ffff";
-  ctx.shadowBlur = 12;
-  ctx.globalAlpha = 0.92;
-  ctx.fillText("Choáng", z.x, z.y - z.radius - 18);
-  ctx.globalAlpha = 1;
-  ctx.shadowBlur = 0;
-  ctx.restore();
+    // Hiệu ứng tia điện động
+    ctx.save();
+    ctx.strokeStyle = "#00ffff"; // Xanh điện sáng hơn
+    ctx.lineWidth = 1;
+    ctx.shadowColor = "#00ffff";
+    ctx.shadowBlur = 8;
+    for (let i = 0; i < 2; i++) {
+        const angle = Math.random() * Math.PI * 2;
+        const r1 = z.radius + 2;
+        const r2 = z.radius + 4 + Math.random() * 4;
+        ctx.beginPath();
+        ctx.moveTo(z.x + Math.cos(angle) * r1, z.y + Math.sin(angle) * r1);
+        ctx.lineTo(z.x + Math.cos(angle) * r2, z.y + Math.sin(angle) * r2);
+        ctx.stroke();
+    }
+    ctx.restore();
 }
-    // Hiện chữ "Cháy" khi zombie bị đốt
-    if (z.burnEndTime && Date.now() < z.burnEndTime) {
-      ctx.save();
-      ctx.font = "0.8rem Arial";
-      ctx.textAlign = "center";
-      ctx.textBaseline = "bottom";
-      ctx.fillStyle = "orange"; // Màu cam cho hiệu ứng cháy
-      ctx.shadowColor = "red";
-      ctx.shadowBlur = 10;
-      // Vẽ chữ "Cháy" ở cùng vị trí với chữ "Choáng"
-      ctx.fillText("Cháy", z.x, z.y - z.radius - 18);
-      ctx.restore();
-    }
-
-    // Hiện chữ "Chậm" khi zombie bị làm chậm
-    if (z.slowEndTime && Date.now() < z.slowEndTime) {
-      ctx.save();
-      ctx.font = "0.8rem Arial";
-      ctx.textAlign = "center";
-      ctx.textBaseline = "bottom";
-      ctx.fillStyle = "#87ceeb"; // Màu xanh da trời cho hiệu ứng chậm
-      ctx.shadowColor = "blue";
-      ctx.shadowBlur = 10;
-      // Vẽ chữ "Chậm" ở cùng vị trí với chữ "Choáng"
-      ctx.fillText("Chậm", z.x, z.y - z.radius - 18);
-      ctx.restore();
-    }
 
 // 🔥 Hiệu ứng lửa động khi bị trúng lửa
 if (z.onFireUntil && Date.now() < z.onFireUntil) {
-  ctx.save();
-  // Lớp sáng cam phủ ngoài (chỉ 1 lần shadowBlur)
-  ctx.globalAlpha = 0.5;
-  ctx.beginPath();
-  ctx.arc(z.x, z.y, z.radius + 2, 0, Math.PI * 2);
-  ctx.fillStyle = "rgba(255,120,0,0.25)";
-  ctx.shadowColor = "orange";
-  ctx.shadowBlur = 12;
-  ctx.fill();
-  ctx.shadowBlur = 0;
-
-  // Vẽ 2 ngọn lửa động (fill, không blur)
-  for (let i = 0; i < 2; i++) {
-    const angle = (Math.PI * 2 / 2) * i + frame / 15;
-    const len = 10 + Math.sin(frame / 7 + i + frame / 10) * 3;
     ctx.save();
-    ctx.translate(z.x + Math.cos(angle) * (z.radius - 2), z.y + Math.sin(angle) * (z.radius - 2));
-    ctx.rotate(angle);
+    // Lớp sáng cam phủ ngoài (chỉ 1 lần shadowBlur)
+    ctx.globalAlpha = 0.5;
     ctx.beginPath();
-    ctx.moveTo(0, 0);
-    ctx.quadraticCurveTo(2, -len / 2, 0, -len);
-    ctx.quadraticCurveTo(-2, -len / 2, 0, 0);
-    ctx.fillStyle = "rgba(255,140,0,0.85)";
-    ctx.globalAlpha = 0.8;
+    ctx.arc(z.x, z.y, z.radius + 2, 0, Math.PI * 2);
+    ctx.fillStyle = "rgba(255,120,0,0.25)";
+    ctx.shadowColor = "orange";
+    ctx.shadowBlur = 8;
     ctx.fill();
+    ctx.shadowBlur = 0;
+
+    // Vẽ 2 ngọn lửa động (fill, không blur)
+    for (let i = 0; i < 2; i++) {
+        const angle = (Math.PI * 2 / 2) * i + frame / 15;
+        const len = 10 + Math.sin(frame / 7 + i + frame / 10) * 3;
+        ctx.save();
+        ctx.translate(z.x + Math.cos(angle) * (z.radius - 2), z.y + Math.sin(angle) * (z.radius - 2));
+        ctx.rotate(angle);
+        ctx.beginPath();
+        ctx.moveTo(0, 0);
+        ctx.quadraticCurveTo(2, -len / 2, 0, -len);
+        ctx.quadraticCurveTo(-2, -len / 2, 0, 0);
+        ctx.fillStyle = "rgba(255,140,0,0.85)";
+        ctx.globalAlpha = 0.8;
+        ctx.fill();
+        ctx.restore();
+    }
     ctx.restore();
-  }
-  ctx.restore();
 }
 
 // ❄️ Hiệu ứng băng động khi bị trúng băng
 if (z.onIceUntil && Date.now() < z.onIceUntil) {
-  ctx.save();
-  // Lớp băng phủ ngoài (chỉ 1 lần shadowBlur)
-  ctx.globalAlpha = 0.7;
-  ctx.beginPath();
-  ctx.arc(z.x, z.y, z.radius + 2, 0, Math.PI * 2);
-  ctx.fillStyle = "rgba(180,220,255,0.45)";
-  ctx.shadowColor = "#b3e0ff";
-  ctx.shadowBlur = 10;
-  ctx.fill();
-  ctx.shadowBlur = 0;
-
-  // Vẽ 2 tinh thể băng nhỏ (fill, không blur)
-  for (let i = 0; i < 2; i++) {
-    const angle = (Math.PI * 2 / 2) * i + frame / 30;
-    const len = 7 + Math.sin(frame / 8 + i) * 1.5;
     ctx.save();
-    ctx.translate(z.x + Math.cos(angle) * (z.radius + 4), z.y + Math.sin(angle) * (z.radius + 4));
-    ctx.rotate(angle + frame / 40);
-    ctx.beginPath();
-    ctx.moveTo(0, 0);
-    ctx.lineTo(2, -len / 2);
-    ctx.lineTo(0, -len);
-    ctx.lineTo(-2, -len / 2);
-    ctx.closePath();
-    ctx.fillStyle = "#e0f7fa";
+    // Lớp băng phủ ngoài (chỉ 1 lần shadowBlur)
     ctx.globalAlpha = 0.7;
+    ctx.beginPath();
+    ctx.arc(z.x, z.y, z.radius + 2, 0, Math.PI * 2);
+    ctx.fillStyle = "rgba(180,220,255,0.45)";
+    ctx.shadowColor = "#b3e0ff";
+    ctx.shadowBlur = 8;
     ctx.fill();
+    ctx.shadowBlur = 0;
+
+    // Vẽ 2 tinh thể băng nhỏ (fill, không blur)
+    for (let i = 0; i < 2; i++) {
+        const angle = (Math.PI * 2 / 2) * i + frame / 30;
+        const len = 7 + Math.sin(frame / 8 + i) * 1.5;
+        ctx.save();
+        ctx.translate(z.x + Math.cos(angle) * (z.radius + 4), z.y + Math.sin(angle) * (z.radius + 4));
+        ctx.rotate(angle + frame / 40);
+        ctx.beginPath();
+        ctx.moveTo(0, 0);
+        ctx.lineTo(2, -len / 2);
+        ctx.lineTo(0, -len);
+        ctx.lineTo(-2, -len / 2);
+        ctx.closePath();
+        ctx.fillStyle = "#e0f7fa";
+        ctx.globalAlpha = 0.7;
+        ctx.fill();
+        ctx.restore();
+    }
     ctx.restore();
-  }
-  ctx.restore();
 }
+// --- BẮT ĐẦU: Vẽ chữ hiệu ứng trên đầu zombie ---
+let yOffset = 0;
+
+// Vẽ chữ "CHOÁNG"
+if (z.stunnedByThunder && Date.now() < z.stunnedThunderUntil) {
+    ctx.save();
+    ctx.font = "0.8rem Arial";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "bottom";
+    ctx.fillStyle = "#00ffff";
+    ctx.shadowColor = "#00ffff";
+    ctx.shadowBlur = 12;
+    ctx.globalAlpha = 0.92;
+    ctx.fillText("Choáng", z.x, z.y - z.radius - 18 - yOffset);
+    ctx.globalAlpha = 1;
+    ctx.shadowBlur = 0;
+    ctx.restore();
+    yOffset += 20;
+}
+
+// Vẽ chữ "Cháy"
+if (z.burnEndTime && Date.now() < z.burnEndTime) {
+    ctx.save();
+    ctx.font = "0.8rem Arial";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "bottom";
+    ctx.fillStyle = "orange";
+    ctx.shadowColor = "red";
+    ctx.shadowBlur = 10;
+    ctx.fillText("Cháy", z.x, z.y - z.radius - 18 - yOffset);
+    ctx.restore();
+    yOffset += 20;
+}
+
+// Vẽ chữ "Chậm"
+if (z.slowEndTime && Date.now() < z.slowEndTime) {
+    ctx.save();
+    ctx.font = "0.8rem Arial";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "bottom";
+    ctx.fillStyle = "#87ceeb";
+    ctx.shadowColor = "blue";
+    ctx.shadowBlur = 10;
+    ctx.fillText("Chậm", z.x, z.y - z.radius - 18 - yOffset);
+    ctx.restore();
+    yOffset += 20;
+}
+// --- KẾT THÚC: Vẽ chữ hiệu ứng trên đầu zombie ---
+
 // ✨✨ Mã hiển thị tên được thêm vào đây ✨✨
 // Chọn màu chữ: nếu là Tinh Anh thì màu đỏ, không thì màu trắng
 ctx.fillStyle = z.isElite ? "#ff4c4c" : "#fff"; 
-ctx.font = "12px sans-serif";
+ctx.font = "10px sans-serif";
 ctx.textAlign = "center";
 ctx.shadowBlur = 0;
 ctx.fillText(z.style || 'Normal', z.x, z.y + z.radius + 18);
@@ -7896,13 +7984,13 @@ if (!z.isBoss && z.state === "chasing" && z.showStatusIcon) {
   }
 }
     // Vẽ icon Suy yếu nếu có
-    if (z.isWeakened && Date.now() < z.weakenEndTime) {
-        ctx.font = `${z.radius}px sans-serif`;
-        ctx.textAlign = "right"; // Vẽ bên phải
-        ctx.textBaseline = "top";
-        ctx.fillStyle = "#ff4c4c"; // Màu đỏ
-        ctx.fillText("💥⬇️", z.x - z.radius * -1, z.y - z.radius * 3);
-    }
+if (z.isWeakened && Date.now() < z.weakenEndTime) {
+  ctx.font = `${z.radius * 0.8}px sans-serif`; // nhỏ hơn
+  ctx.textAlign = "center";                     // canh giữa
+  ctx.textBaseline = "top";
+  ctx.fillStyle = "#ff4c4c";
+  ctx.fillText("weaken", z.x, z.y - z.radius * 3); // ngay trên đầu
+}
 
 if (behaviorIcon) {
   ctx.font = `${z.radius}px sans-serif`;
@@ -7916,17 +8004,11 @@ ctx.restore();
   // 💬 Biểu cảm (chỉ zombie thường mới có)
   if (!z.isBoss && z.iconToDraw) {
     ctx.save();
-    ctx.font = `${z.radius * 1.2}px serif`;
+    ctx.font = `${z.radius}px sans-serif`;
     ctx.textAlign = "left";
-    ctx.textBaseline = "middle";
+    ctx.textBaseline = "top";
     ctx.fillStyle = "#fff";
-    ctx.shadowColor = "#000";
-    ctx.shadowBlur = 4;
-ctx.font = `${z.radius}px sans-serif`;
-ctx.textAlign = "left";
-ctx.textBaseline = "top";
-ctx.fillStyle = "#fff";
-ctx.fillText(z.iconToDraw, z.x + z.radius * 0.6, z.y - z.radius * 1.2);
+    ctx.fillText(z.iconToDraw, z.x + z.radius * 0.6, z.y - z.radius * 1.2);
     ctx.restore();
 }
 });
@@ -9017,41 +9099,92 @@ function populateShop() {
 }
 
 // Hàm xử lý khi mua một vật phẩm
+/**
+ * Xử lý logic khi người chơi mua một vật phẩm trong cửa hàng.
+ * @param {string} itemId - ID của vật phẩm được chọn mua.
+ */
 function purchaseShopItem(itemId) {
+    // Ghi chú: Tìm toàn bộ thông tin của vật phẩm trong mảng `shopItems` dựa vào ID.
     const item = shopItems.find(i => i.id === itemId);
-    if (!item) return;
+    if (!item) return; // Nếu không tìm thấy vật phẩm, thoát khỏi hàm.
 
+    // Ghi chú: Kiểm tra xem người chơi có đủ xu để mua không.
     if (player.coins >= item.cost) {
+
+        // Ghi chú: Đây là bước kiểm tra đặc biệt. Trước khi trừ tiền, hãy chắc chắn rằng
+        // người chơi đã học kỹ năng active trước khi mua nâng cấp cho nó.
+        if (item.type === 'active_skill_damage_upgrade') {
+            // Dùng `some` để kiểm tra xem trong mảng `activeSkills` có kỹ năng nào trùng tên không.
+            const skillIsLearned = activeSkills.some(s => s.name === item.skillName);
+            if (!skillIsLearned) {
+                showWarning(`Bạn cần học kỹ năng "${item.skillName}" trước!`);
+                return; // Dừng việc mua bán lại nếu chưa học.
+            }
+        }
+
+        // Ghi chú: Trừ số xu của người chơi, phát âm thanh và hiển thị thông báo mua thành công.
         player.coins -= item.cost;
-        playSound('sfx-powerup', 0.8); // Âm thanh mua thành công
+        playSound('sfx-powerup', 0.8);
         showWarning(`Đã mua: ${item.name}!`);
-        // Áp dụng hiệu ứng vật phẩm
-        switch (item.id) {
-            case 'buy_10_mana':
-                player.mana += item.value;
+
+        // Ghi chú: Sử dụng cấu trúc `switch` dựa trên `item.type` để xử lý các loại vật phẩm khác nhau.
+        // Cách này giúp code gọn gàng và dễ mở rộng hơn.
+        switch (item.type) {
+            // Trường hợp mua tài nguyên (máu, mana, năng lượng).
+            case 'resource':
+                if (item.id.includes('mana')) player.mana += item.value;
+                if (item.id.includes('energy')) player.energy += item.value;
+                if (item.id.includes('hp')) player.hearts += item.value;
                 break;
-            case 'buy_10_energy':
-                player.energy += item.value;
+            
+            // Trường hợp mua nâng cấp vĩnh viễn cho chỉ số cơ bản của người chơi.
+            case 'permanent_upgrade':
+                if (item.id === 'buy_damage') playerUpgrades.damageBoost += item.value;
                 break;
-            case 'buy_5_hp':
-                player.hearts += item.value;
+            
+            // Trường hợp mua các loại buff tạm thời.
+            case 'buff':
+                if (item.id === 'buy_lucky') luckyBuffEndTime = Date.now() + 45000;
+                if (item.id === 'buy_power') powerBuffEndTime = Date.now() + 45000;
+                if (item.id === 'buy_crazy') crazyBuffEndTime = Date.now() + 45000;
+                if (item.id === 'buy_exp') expBuffEndTime = Date.now() + 45000;
+                if (item.id === 'buy_magnet') magnetBuffEndTime = Date.now() + 30000;
+                if (item.id === 'buy_madness') crazyMadnessTimeEndTime = Date.now() + 30000;
                 break;
-            case 'buy_12_hp':
-                player.hearts += item.value;
+            
+            // Trường hợp mua nâng cấp sát thương cho các kỹ năng mặc định (Đao, Kiếm, Lửa...).
+            case 'skill_damage_upgrade':
+                // `hasOwnProperty` kiểm tra xem `skillUpgrades` có thuộc tính `item.skillTarget` không.
+                if (item.skillTarget && skillUpgrades.hasOwnProperty(item.skillTarget)) {
+                    // Tăng sát thương cho kỹ năng tương ứng. Ví dụ: skillUpgrades['bladeDamage'] += 0.2;
+                    skillUpgrades[item.skillTarget] += item.value;
+                }
                 break;
-            case 'buy_damage':
-                playerUpgrades.damageBoost += item.value;
+
+            // Trường hợp mua nâng cấp sát thương cho các kỹ năng Active (học khi lên cấp).
+            case 'active_skill_damage_upgrade':
+                // Tìm kỹ năng đã học trong mảng `activeSkills`.
+                const skillToUpgrade = activeSkills.find(s => s.name === item.skillName);
+                if (skillToUpgrade) {
+                    // Nếu tìm thấy, cộng dồn sát thương.
+                    skillToUpgrade.baseDamage += item.value;
+                    // Cập nhật lại tooltip của kỹ năng trong bảng (phím X) để hiển thị sát thương mới.
+                    updateSkillsList(); 
+                }
                 break;
         }
 
-        // Cập nhật lại giao diện shop và UI chính
-        populateShop();
-        updateUI();
-        updateStatsOverlay();
+        // Ghi chú: Sau khi mua thành công, cập nhật lại toàn bộ giao diện liên quan.
+        populateShop();       // Cập nhật lại số xu và các vật phẩm trong cửa hàng.
+        updateUI();           // Cập nhật thanh trạng thái chính (HP, Mana, Xu...).
+        updateStatsOverlay(); // Cập nhật bảng thống kê (phím Z).
+
     } else {
-        showWarning("Không đủ xu!"); // Thông báo không đủ tiền
+        // Ghi chú: Nếu không đủ xu, chỉ hiển thị thông báo.
+        showWarning("Không đủ xu!");
     }
 }
+
 // 🌊 Hiện popup "Wave X bắt đầu"
 function showWavePopup() {
   const popup = document.getElementById("wavePopup");
