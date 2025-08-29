@@ -747,7 +747,7 @@ button.active {
   content: attr(data-tooltip);
   position: absolute;
   left: 110%;
-  top: 4rem;
+  top: 3.5rem;
   transform: translateX(-40%);
   margin-left: .6rem;
   min-width: 18rem;
@@ -779,6 +779,7 @@ button.active {
   display: flex;
   flex-direction: column;
   max-height: 90vh; /* Chiều cao tối đa bằng 85% chiều cao màn hình */
+  z-index: 10009;
 }
 
 .debug-grid {
@@ -1100,9 +1101,9 @@ button.active {
 }
 
 .shop-item .name {
-  font-weight: bold;
+  font-weight: 500;
   margin: 0.4rem 0;
-  font-size: 0.85rem;
+  font-size: 0.8rem;
   min-height: 2.2em;
 }
 
@@ -1183,6 +1184,25 @@ button.active {
   0% { opacity: 0.6; }
   50% { opacity: 1; }
   100% { opacity: 0.6; }
+}
+
+/* CSS cho hiển thị số lượng đạn */
+#ammoDisplay {
+  position: fixed;
+  bottom: 0.1rem;
+  left: 18.8rem;
+  background: rgba(0, 0, 0, 0.7);
+  border: 2px solid var(--color-primary);
+  border-radius: 0.25rem;
+  padding: 0.1rem 0.1rem;
+  color: var(--color-text);
+  font-family: 'Segoe UI', sans-serif;
+  font-size: 0.8rem;
+  font-weight: bold;
+  z-index: 9998;
+  pointer-events: none;
+  transition: opacity 0.3s ease;
+  opacity: 0; /* Mặc định ẩn đi */
 }
 
 /* kết thúc style */
@@ -1639,14 +1659,25 @@ const shopItems = [
     { id: 'buy_10_energy', name: '10 Energy', icon: '⚡', cost: 1, type: 'resource', value: 10 },
     { id: 'buy_5_hp',      name: '5 HP',      icon: '❤️', cost: 1, type: 'resource', value: 5 },
     { id: 'buy_12_hp',      name: '12 HP',      icon: '❤️', cost: 2, type: 'resource', value: 12 },
-    { id: 'buy_damage',    name: 'Sát thương +0.2', icon: '💥', cost: 3, type: 'permanent_upgrade', value: 0.2 },
+    { id: 'buy_damage',    name: 'Dmg +0.2', icon: '💥', cost: 3, type: 'permanent_upgrade', value: 0.2 },
+    // --- Mua đạn ---
+    { id: 'buy_ice_arrow_speed', name: '+0.5 speed', icon: '🏹', cost: 3, type: 'permanent_upgrade' },
+    { id:'crit_rate_30s', name:'Crit Rate +15%', icon:'💥', type:'crit', sub:'rate', value:0.15, durationMs:60000, cost:4 },
+    { id:'crit_dmg_30s',  name:'Crit Dmg +25%',  icon:'💥', type:'crit', sub:'dmg',  value:0.25, durationMs:60000, cost:4 },
+    { id: 'buy_ice_rate',   name: '+0.5 att.speed', icon: '🏹', cost: 10, type: 'ice', value: 0.5 },
+    { id: 'buy_ice_damage', name: '+1 dmg',           icon: '🏹', cost: 5, type: 'ice', value: 1   },
+    { id: 'buy_ammo_spiral', name: '+50 Xoắn ốc', icon: '🔄', cost: 10, type: 'ammo', value: 50, targetAmmoIndex: 0 },
+    { id: 'buy_ammo_zigzag', name: '+75 Zigzag', icon: '↔️', cost: 10, type: 'ammo', value: 75, targetAmmoIndex: 1 },
+    { id: 'buy_ammo_spiral_fwd', name: '+50 Xoắn', icon: '🎯', cost: 15, type: 'ammo', value: 50, targetAmmoIndex: 2 },
+    { id: 'buy_ammo_piercing', name: '+25 Xuyên', icon: '🎯', cost: 20, type: 'ammo', value: 25, targetAmmoIndex: 3 },
+    { id: 'buy_ammo_laser', name: '+10 Laze', icon: '💥', cost: 25, type: 'ammo', value: 10, targetAmmoIndex: 4 },
     // thêm các vật phẩm khác vào đây
-    { id: 'buy_lucky',   name: 'Buff Lucky',   icon: '🍀', cost: 15, type: 'buff' },
-    { id: 'buy_power',   name: 'Buff Power',   icon: '🍁', cost: 15, type: 'buff' },
-    { id: 'buy_crazy',   name: 'Buff Crazy',   icon: '🍂', cost: 15, type: 'buff' },
-    { id: 'buy_exp',     name: 'Buff EXP',     icon: '🌿', cost: 15, type: 'buff' },
-    { id: 'buy_magnet',  name: 'Buff Magnet',  icon: '🧲', cost: 10, type: 'buff' },
-    { id: 'buy_madness', name: 'Buff Madness', icon: '💢', cost: 25, type: 'buff' },
+    { id: 'buy_lucky',   name: 'Lucky',   icon: '🍀', cost: 15, type: 'buff' },
+    { id: 'buy_power',   name: 'Power',   icon: '🍁', cost: 15, type: 'buff' },
+    { id: 'buy_crazy',   name: 'Crazy',   icon: '🍂', cost: 15, type: 'buff' },
+    { id: 'buy_exp',     name: 'EXP',     icon: '🌿', cost: 15, type: 'buff' },
+    { id: 'buy_magnet',  name: 'Magnet',  icon: '🧲', cost: 10, type: 'buff' },
+    { id: 'buy_madness', name: 'Madness', icon: '💢', cost: 25, type: 'buff' },
     // --- Nâng cấp Đao ---
 { id: 'buy_blade_dmg_1', name: 'Dmg +0.2', icon: '🔪', cost: 5, type: 'skill_damage_upgrade', value: 0.2, skillTarget: 'bladeDamage' },
 { id: 'buy_blade_dmg_2', name: 'Dmg +0.5', icon: '🔪', cost: 10, type: 'skill_damage_upgrade', value: 0.5, skillTarget: 'bladeDamage' },
@@ -1827,15 +1858,28 @@ const player = {
   isTeleporting: false,      // Cờ báo hiệu đang trong quá trình dịch chuyển
   isGrowingAfterTeleport: false, // Cờ báo hiệu đang lớn dần ra sau khi dịch chuyển
   originalSize: 20,          // Dùng để lưu lại kích thước gốc
+  // Lưu trữ số lượng đạn cho từng loại
+  // Các key (0-4) tương ứng với clickShotMode
+  ammo: {
+    0: 100, // Đạn Xoắn ốc
+    1: 150, // Đạn Zigzag
+    2: 100, // Đạn Xoắn bay thẳng
+    3: 50,  // Đạn Xuyên thẳng
+    4: 20   // Đạn Laze
+  }
 };
 
 // 🌟 Trạng thái nâng cấp
 const playerUpgrades = {
-  fireRate: 1,          // 🔫 Hướng bắn
+  iceArrow: 1,          // 🏹 Ice Arrow
   damageBoost: 1,       // 💥 Sát thương cơ bản cộng thêm
   hpBoost: 0,           // ❤️ Số lần đã tăng máu
   bulletSpeed: 1,       // 💨 Tốc độ đạn
   lineBulletCount: 1    // 🧨 Số lượng đạn
+};
+// 🛒 Shop-only
+const shopUpgrades = {
+  iceArrowSpeedLevel: 0, // 0..3
 };
 // 🌟 Biến nâng cấp kỹ năng mặc định (🔪 Đao, ⚔️ Kiếm, 🔥 Lửa, ❄️ Băng)
 const skillUpgrades = {
@@ -2008,9 +2052,21 @@ document.addEventListener("keyup", e => keys[e.key.toLowerCase()] = false);
 canvas.addEventListener("click", () => {
   const now = Date.now();
   if (now - lastManualShootTime < manualShootCooldown) return;
-  // Không đặt lại lastManualShootTime ở đây để laze có thể tự kiểm tra
 
   if (zombies.length === 0) return;
+
+  // ✨ BƯỚC KIỂM TRA ĐẠN MỚI ✨
+  // Nếu là loại đạn đặc biệt (không phải Mặc định)
+  if (clickShotMode !== 5) { 
+      if (player.ammo[clickShotMode] <= 0) {
+          const modeNames = ["Xoắn ốc", "Zigzag", "Xoắn bay thẳng", "Xuyên thẳng", "Laze"];
+          showWarning(`Hết đạn ${modeNames[clickShotMode]}!`);
+          return; // Dừng, không cho bắn
+      }
+      // Nếu còn đạn, trừ đi 1 viên và cập nhật hiển thị
+      player.ammo[clickShotMode]--;
+      updateAmmoDisplay();
+  }
 
   // Nếu đang ở chế độ laze, gọi hàm bắn laze và kết thúc
   if (clickShotMode === 4) {
@@ -2083,19 +2139,20 @@ canvas.addEventListener("click", () => {
 // Gán sự kiện middle click (chuột giữa) để chuyển kiểu bắn
 canvas.addEventListener("mousedown", (e) => {
   if (e.button === 1) {
-    // Tăng tổng số kiểu đạn lên 6
     clickShotMode = (clickShotMode + 1) % 6;
+    const modeNames = [ "🔄 Xoắn ốc", "↔️ Zigzag", "🎯 Xoắn bay thẳng", "🎯 Xuyên thẳng", "💥 Laze", "🔵 Mặc định"];
     
-    // Cập nhật lại danh sách tên các kiểu đạn
-    const modeNames = [
-      "🔄 Xoắn ốc", 
-      "↔️ Zigzag", 
-      "🎯 Xoắn bay thẳng", 
-      "🎯 Xuyên thẳng", 
-      "💥 Laze", 
-      "🔵 Mặc định" // Chuyển Mặc định xuống vị trí số 5
-    ];
-    showWarning(`Kiểu đạn chuột trái: ${modeNames[clickShotMode]}`);
+    // Lấy số đạn để hiển thị trong thông báo
+    let ammoInfo = '';
+    if (clickShotMode !== 5) { // Nếu không phải loại Mặc định
+        ammoInfo = ` (${player.ammo[clickShotMode]} )`;
+    }
+
+    showWarning(`Kiểu đạn: ${modeNames[clickShotMode]}`);
+    
+    // Cập nhật hiển thị cố định ở góc trái
+    updateAmmoDisplay(); 
+    
     e.preventDefault();
   }
 });
@@ -2166,6 +2223,49 @@ function cleanupInactiveObjects() {
       explosions.splice(i, 1);
     }
   }
+}
+function updateAmmoDisplay() {
+    const display = document.getElementById('ammoDisplay');
+    const modeNames = ["🔄 Xoắn ốc", "↔️ Zigzag", "🎯 Xoắn bay thẳng", "🎯 Xuyên thẳng", "💥 Laze", "🔵 Mặc định"];
+    
+    // Nếu là chế độ mặc định (vô hạn) hoặc không có display thì ẩn đi
+    if (clickShotMode === 5 || !display) {
+        display.style.opacity = '0';
+        return;
+    }
+
+    const currentAmmo = player.ammo[clickShotMode];
+    const ammoText = currentAmmo > 0 ? currentAmmo.toString() : 'Hết đạn!';
+    
+    display.innerText = `${modeNames[clickShotMode]}: ${ammoText}`;
+    display.style.opacity = '1'; // Hiện lên
+}
+/* ===== 🏹 ICE ARROW: state & helpers ===== */
+let iceArrowRateShopSteps = 0;   // mỗi lần mua +1 step = +0.5x
+let iceArrowDamageShop    = 0;   // dmg riêng mua thêm trong shop
+const ICE_ARROW_RATE_STEP = 0.5; // mỗi lần mua +0.5x
+const ICE_ARROW_RATE_MAX  = 3;   // max 3x
+const ICE_ARROW_DMG_PER_LEVEL = 1; // mỗi cấp mũi tên +1 dmg riêng (có thể chỉnh)
+window.manualShootCooldownBase ??= manualShootCooldown; // lưu cooldown gốc 1x
+
+// Tốc độ bắn riêng của Ice Arrow (không phụ thuộc player nữa)
+function getIceArrowRate() {
+  // tốc độ chỉ tăng từ shop, base = 1.0
+  return Math.min(ICE_ARROW_RATE_MAX, 1 + iceArrowRateShopSteps * ICE_ARROW_RATE_STEP);
+}
+
+// Cooldown riêng của phím Space (Ice Arrow)
+function getIceArrowCooldown() {
+  const r = getIceArrowRate();
+  return Math.max(1, Math.round(manualShootCooldownBase / r));
+}
+
+// Sát thương cộng thêm riêng cho Ice Arrow (level + shop)
+function getIceArrowBonusDamage() {
+  // Lấy level mũi tên = iceArrow hiện tại (cấp 1 coi như bonus 0)
+  const lvl = Math.max(0, (playerUpgrades.iceArrow || 1) - 1);
+  const fromLevel = lvl * ICE_ARROW_DMG_PER_LEVEL;
+  return fromLevel + iceArrowDamageShop;
 }
 
 //💥 3. Hàm hỗ trợ tiện ích
@@ -2443,7 +2543,7 @@ function activateSecretItem(item) {
         showWarning("Oh! No");
         createSpawnEffect(item.x, item.y);
         setTimeout(() => {
-            showWarning("❓: Một kẻ địch mạnh đã xuất hiện!");
+            showWarning("❓: Boss!");
             spawnBoss(item.x, item.y);
         }, 500); // Đợi 0.5 giây để tạo hiệu ứng
     }
@@ -2473,6 +2573,8 @@ function releaseBullet(bullet) {
     delete bullet.customDmg;     // Xóa sát thương riêng của Clone
     delete bullet.color;         // Xóa màu tùy chỉnh
     delete bullet.effect;        // Xóa hiệu ứng của đạn Fairy
+    delete bullet.isIceArrow;
+    delete bullet.iceHits;  
     bullet.piercing = false;     // Reset thuộc tính xuyên thấu về mặc định
     
     // Reset các kiểu bay đặc biệt
@@ -2708,7 +2810,7 @@ function dealDamageToZombie(z, dmg = 1) {
         finalDamage *= 2;
 
         // 1. Tỉ lệ Crit giảm còn 10%
-        const isCrit = Math.random() < 0.1;
+        const isCrit = Math.random() < 0.3;
 
         // Nếu crit thành công...
         if (isCrit) {
@@ -2728,7 +2830,7 @@ function dealDamageToZombie(z, dmg = 1) {
             });
 
             // 3. Hồi máu CHỈ KHI crit thành công
-            const lifestealAmount = Math.ceil(finalDamage * 0.5);
+            const lifestealAmount = Math.ceil(finalDamage * 0.2); // Hồi máu 20% sát thương
             if (lifestealAmount > 0) {
                 player.hearts += lifestealAmount;
                 createHealImpactEffect(player, lifestealAmount);
@@ -2897,31 +2999,67 @@ function firePlayerLaser() {
         });
     }
 }
+// Tốc độ Ice Arrow (dựa trên cấp độ nâng cấp)
+function getIceArrowSpeed() {
+  const base = 1;                     // lv0 = 1.0
+  const lvl  = Math.min(4, (shopUpgrades.iceArrowSpeedLevel || 0)); // +0.5 mỗi lần, 4 lần là 3.0
+  return Math.min(3, base + lvl * 0.5);
+}
 
 //🔫 4. Bắn đạn & auto shoot
 function shoot() {
   const now = Date.now();
-  if (now - lastManualShootTime < manualShootCooldown) return;
+  // dùng cooldown riêng cho Ice Arrow
+  if (now - lastManualShootTime < getIceArrowCooldown()) return;
   lastManualShootTime = now;
 
-  const directionCount = playerUpgrades.fireRate;
-  const bulletsPerDirection = 1;
-  const angleOffset = Math.random() * Math.PI * 2;
-  const speed = playerUpgrades.bulletSpeed;
+  const directionCount = playerUpgrades.iceArrow;       // số mũi tên theo cấp như cũ
+  const speed = getIceArrowSpeed();               // tốc độ mũi tên theo cấp
+  const basePlayerDmg  = (playerUpgrades.damageBoost || 1);
+  const iceBonus       = getIceArrowBonusDamage();
+  const finalDmg       = basePlayerDmg + iceBonus;
 
-  for (let i = 0; i < directionCount; i++) {
-    const angle = angleOffset + (2 * Math.PI / directionCount) * i;
+  if (zombies.length === 0) return;
 
-    for (let j = 0; j < bulletsPerDirection; j++) {
+  // 🔁 MỐC 21: giữ nguyên hành vi “bắn 21 hướng phủ toàn bản đồ”
+  if (directionCount >= 21) {
+    const angleOffset = Math.random() * Math.PI * 2; // giữ ngẫu nhiên offset như bản gốc
+    for (let i = 0; i < directionCount; i++) {
+      const angle = angleOffset + (2 * Math.PI / directionCount) * i;
       const b = getBullet();
-      b.x = player.x;
-      b.y = player.y;
-      b.dx = Math.cos(angle);
-      b.dy = Math.sin(angle);
-      b.speed = speed;
-      b.active = true;
+      b.x = player.x; b.y = player.y;
+      b.dx = Math.cos(angle); b.dy = Math.sin(angle);
+      b.speed = speed; b.active = true;
+
+      // 🏹 biến thành mũi tên băng + xuyên + dmg riêng
+      b.isIceArrow = true;
+      b.piercing   = true;
+      b.customDmg  = finalDmg;
+
       bullets.push(b);
     }
+    return;
+  }
+
+  // 🎯 < 21: auto-aim — chọn K zombie gần nhất và bắn thẳng vào chúng
+  const targets = kNearestZombiesByPlayer(directionCount, 0);
+  if (!targets.length) return;
+
+  for (let i = 0; i < directionCount; i++) {
+    const t = targets[i % targets.length];
+    const angle = Math.atan2(t.y - player.y, t.x - player.x);
+
+    const b = getBullet();
+    b.x = player.x; b.y = player.y;
+    b.dx = Math.cos(angle); b.dy = Math.sin(angle);
+    b.speed = speed; b.active = true;
+
+    // 🏹 Ice Arrow flags
+    b.isIceArrow = true;
+    b.piercing   = true;
+    b.customDmg  = finalDmg;
+
+    bullets.push(b);
   }
 }
 
@@ -4600,33 +4738,154 @@ function sysUpdateBullets() {
     } else { b.x += b.dx * b.speed; b.y += b.dy * b.speed; }
 
     // va chạm zombies
-    for (let j = 0; j < zombies.length; j++) {
-      const z = zombies[j]; if (!z.active) continue;
-      if (d2(b.x, b.y, z.x, z.y) < 20*20) {
-        if (b.isFairyBullet) { // fairy
-          if (b.effect === 'sleep') { z.isSleeping = true; z.sleepUntil = Date.now() + 3000; }
-          else if (b.effect === 'wandering') { z.state = 'wandering'; z.wanderTime = Date.now() + 3000; }
-          z.isWeakened = true; z.weakenEndTime = Date.now() + 5000; for (let k = 0; k < 4; k++) createFairyHitParticle(z);
-          releaseBullet(b); break;
-        } else if (b.isPetBullet) { // pet
-          dealDamageToZombie(z, b.customDmg); z.stunnedByThunder = true; z.stunnedThunderUntil = Date.now() + b.stunDuration; releaseBullet(b); break;
-        } else { // player/clone bình thường
-          const dmg = (b.customDmg !== undefined) ? b.customDmg : (playerUpgrades.damageBoost || 1);
-          dealDamageToZombie(z, dmg);
-          if (!b.piercing) { releaseBullet(b); break; }
-        }
-      }
+for (let j = 0; j < zombies.length; j++) {
+  const z = zombies[j]; if (!z.active) continue;
+  if (d2(b.x, b.y, z.x, z.y) < 20*20) {
+
+    const now = Date.now();
+
+    // Cooldown CHUNG cho mọi loại đạn (giữ nguyên logic của bạn)
+    if (z.bulletHitCooldown && now < z.bulletHitCooldown) continue;
+
+    if (b.isFairyBullet) { // fairy
+      if (b.effect === 'sleep') { z.isSleeping = true; z.sleepUntil = now + 3000; }
+      else if (b.effect === 'wandering') { z.state = 'wandering'; z.wanderTime = now + 3000; }
+      z.isWeakened = true; z.weakenEndTime = now + 5000; for (let k = 0; k < 4; k++) createFairyHitParticle(z);
+      z.bulletHitCooldown = now + 100;
+      releaseBullet(b); break;
+
+    } else if (b.isPetBullet) { // pet
+      // 🔽 áp CRIT vào sát thương pet
+      const petDmg = calcCritDamage(b.customDmg, now);
+      dealDamageToZombie(z, petDmg);
+      z.stunnedByThunder = true; z.stunnedThunderUntil = now + b.stunDuration;
+      z.bulletHitCooldown = now + 100;
+      releaseBullet(b); break;
+
+} else { // player/clone bình thường
+  // ➕ thời gian an toàn: dùng _now nếu có, else Date.now()
+  const now = (typeof _now === 'number') ? _now : Date.now();
+
+  let dmg = (b.customDmg !== undefined) ? b.customDmg : (playerUpgrades.damageBoost || 1);
+
+  if (b.isIceArrow) {
+    if (!b.iceHits) b.iceHits = 0;
+    const baseDmg = (b.iceHits === 0) ? dmg : Math.max(1, Math.round(dmg * 0.5));
+
+    // 🔽 áp CRIT vào Ice Arrow
+    const critDmg = calcCritDamage(baseDmg, now);
+
+    // ➕ hiện “Crit!” nếu có chí mạng (không hồi máu)
+    if (critDmg > baseDmg) {
+      const r = z.radius || 15;
+      healEffects.push({
+      x: z.x + 28 + (Math.random() - 0.5) * 5, // Vị trí ngang ngẫu nhiên để tránh chồng lấn
+      y: z.y - z.radius - 15, // Hiện ở vị trí cao hơn số sát thương một chút
+        life: 90, maxLife: 90,
+        text: 'Crit!', delay: 0,
+        color: 'orange'
+      });
     }
-        const buffer = 50; // Thêm một khoảng đệm nhỏ
-    if (b.x < camera.x - buffer || 
-        b.x > camera.x + canvas.width + buffer ||
-        b.y < camera.y - buffer || 
-        b.y > camera.y + canvas.height + buffer) 
-    {
-        releaseBullet(b); // "Xóa" viên đạn bằng cách trả nó về kho
+
+    dealDamageToZombie(z, critDmg);
+    b.iceHits++;
+    z.bulletHitCooldown = now + 100; // cooldown chung
+    // piercing: không release
+
+  } else {
+    // 🔽 áp CRIT vào đạn thường
+    const critDmg = calcCritDamage(dmg, now);
+
+    // ➕ hiện “Crit!” nếu có chí mạng (không hồi máu)
+    if (critDmg > dmg) {
+      const r = z.radius || 15;
+      healEffects.push({
+      x: z.x + 28 + (Math.random() - 0.5) * 5, // Vị trí ngang ngẫu nhiên để tránh chồng lấn
+      y: z.y - z.radius - 15, // Hiện ở vị trí cao hơn số sát thương một chút
+        life: 90, maxLife: 90,
+        text: 'Crit!', delay: 0,
+        color: 'orange'
+      });
     }
+
+    dealDamageToZombie(z, critDmg);
+    z.bulletHitCooldown = now + 100;
+
+    if (!b.piercing) { releaseBullet(b); break; }
   }
 }
+}
+}
+
+const buffer = 50;
+if (b.x < camera.x - buffer || 
+    b.x > camera.x + canvas.width + buffer ||
+    b.y < camera.y - buffer || 
+    b.y > camera.y + canvas.height + buffer) {
+  releaseBullet(b);
+}
+}
+}
+/* ====== CRIT SYSTEM (rate & dmg, có thời hạn) ====== */
+
+// Giới hạn & mặc định
+const CRIT_RATE_CAP = 0.70;   // 70%
+let   baseCritRate   = 0.00;  // 0% (có thể tăng khi lên cấp vĩnh viễn nếu muốn)
+let   baseCritDmg    = 0.50;  // +50%  => tức là multiplier = 1 + 0.50 = 1.5x
+
+// Buff tạm thời mua trong shop / nhận khi lên cấp
+const _critRateBuffs = [];     // { value: 0.15, until: ms }
+const _critDmgBuffs  = [];     // { value: 0.25, until: ms }
+
+// Nén mảng tại chỗ (không tạo mảng mới)
+function _compactTimedBuffs(arr, now) {
+  let w = 0;
+  for (let i = 0; i < arr.length; i++) {
+    const it = arr[i];
+    if (it && it.until > now) arr[w++] = it;
+  }
+  arr.length = w;
+}
+
+// API thêm buff (mua trong shop / nhận khi lên cấp)
+function addCritRateBuff(inc, durationMs) {
+  const now = Date.now();
+  _critRateBuffs.push({ value: inc, until: now + durationMs });
+}
+function addCritDmgBuff(inc, durationMs) {
+  const now = Date.now();
+  _critDmgBuffs.push({ value: inc, until: now + durationMs });
+}
+
+// Lấy chỉ số hiện hành (gộp base + buff còn hạn)
+function getCritRate(now) {
+  let sum = baseCritRate;
+  _compactTimedBuffs(_critRateBuffs, now);
+  for (let i = 0; i < _critRateBuffs.length; i++) sum += _critRateBuffs[i].value;
+  // Kẹp trần 70%
+  return (sum > CRIT_RATE_CAP) ? CRIT_RATE_CAP : (sum < 0 ? 0 : sum);
+}
+function getCritDmg(now) {
+  let sum = baseCritDmg; // không giới hạn tối đa
+  _compactTimedBuffs(_critDmgBuffs, now);
+  for (let i = 0; i < _critDmgBuffs.length; i++) sum += _critDmgBuffs[i].value;
+  return (sum < 0 ? 0 : sum);
+}
+
+// Tính damage đã áp CRIT. 
+// Quy ước: Crit DMG = +X% => multiplier = 1 + X (vd 50% => 1.5x)
+function calcCritDamage(base, now) {
+  const rate = getCritRate(now);     // 0..0.7
+  if (rate > 0 && Math.random() < rate) {
+    const mult = 1 + getCritDmg(now);  // ví dụ 1 + 0.5 = 1.5x
+    const v = Math.round(base * mult);
+    return (v > 0 ? v : 1);
+  }
+  // không crit
+  const b = base | 0;
+  return (b > 0 ? b : 1);
+}
+
 function sysUpdateEnemyBullets(now) {
   for (let i = 0; i < enemyBullets.length; i++) {
     const b = enemyBullets[i]; if (!b.active) continue;
@@ -5179,19 +5438,19 @@ function sysUpdateCombatBuffs(now) {
     isCrazyBuffActive = now < crazyBuffEndTime;
     if (isCrazyBuffActive && !wasCrazy) {
         const crazyD = (playerUpgrades.damageBoost * 0.5) + 1;
-        crazyBuffStats = { speed: 1, bulletSpeed: 1, damage: crazyD, lineBulletCount: 1, fireRate: 10 };
+        crazyBuffStats = { speed: 1, bulletSpeed: 1, damage: crazyD, lineBulletCount: 1, iceArrow: 10 };
         player.speed += crazyBuffStats.speed;
         playerUpgrades.bulletSpeed += crazyBuffStats.bulletSpeed;
         playerUpgrades.damageBoost += crazyBuffStats.damage;
         playerUpgrades.lineBulletCount += crazyBuffStats.lineBulletCount;
-        playerUpgrades.fireRate += crazyBuffStats.fireRate;
+        playerUpgrades.iceArrow += crazyBuffStats.iceArrow;
         updateStatsOverlay();
     } else if (!isCrazyBuffActive && wasCrazy) {
         player.speed -= crazyBuffStats.speed;
         playerUpgrades.bulletSpeed -= crazyBuffStats.bulletSpeed;
         playerUpgrades.damageBoost -= crazyBuffStats.damage;
         playerUpgrades.lineBulletCount -= crazyBuffStats.lineBulletCount;
-        playerUpgrades.fireRate -= crazyBuffStats.fireRate;
+        playerUpgrades.iceArrow -= crazyBuffStats.iceArrow;
         crazyBuffStats = {};
         updateStatsOverlay();
     }
@@ -6919,6 +7178,59 @@ ctx.translate(b.x, b.y);
         ctx.textBaseline = "middle";
         ctx.fillText(b.icon, 0, 0); // Vẽ icon cà rốt 🥕
     }
+      else if (b.isIceArrow) {
+    // 🏹 VẼ MŨI TÊN BĂNG KHÔNG ROTATE/SHADOW (ít rác, nhanh)
+    // Dựa vào hướng bay đã có sẵn trong b.dx, b.dy
+    const vx = b.dx, vy = b.dy;           // vector dọc thân
+    const nx = -vy, ny = vx;              // vector vuông góc (trái/phải)
+
+    // Tham số hình học (có thể tinh chỉnh)
+    const shaftHalf  = 8;   // nửa chiều dài thân
+    const headLen    = 6;   // độ dài đầu nhọn
+    const headWidth  = 4;   // bề ngang đầu nhọn
+    const tailLen    = 6;   // độ lồi của lông đuôi
+    const tailWidth  = 3;   // bề ngang lông đuôi
+
+    // Tâm đang ở (0,0) vì đã translate(b.x, b.y)
+    const cx = 0, cy = 0;
+
+    // Các điểm chính
+    const shaftStartX = cx - vx * shaftHalf;
+    const shaftStartY = cy - vy * shaftHalf;
+    const shaftEndX   = cx + vx * shaftHalf;
+    const shaftEndY   = cy + vy * shaftHalf;
+
+    const tipX  = cx + vx * (shaftHalf + headLen);
+    const tipY  = cy + vy * (shaftHalf + headLen);
+
+    const leftHeadX  = tipX - vx * headLen + nx * headWidth;
+    const leftHeadY  = tipY - vy * headLen + ny * headWidth;
+    const rightHeadX = tipX - vx * headLen - nx * headWidth;
+    const rightHeadY = tipY - vy * headLen - ny * headWidth;
+
+    const tailX = cx - vx * (shaftHalf + tailLen);
+    const tailY = cy - vy * (shaftHalf + tailLen);
+    const leftTailX  = tailX + nx * tailWidth;
+    const leftTailY  = tailY + ny * tailWidth;
+    const rightTailX = tailX - nx * tailWidth;
+    const rightTailY = tailY - ny * tailWidth;
+
+    // Vẽ bằng line (không path phức tạp, không rotate, không shadowBlur)
+    ctx.beginPath();
+    // thân
+    ctx.moveTo(shaftStartX, shaftStartY);
+    ctx.lineTo(shaftEndX,   shaftEndY);
+    // đầu nhọn
+    ctx.moveTo(tipX, tipY); ctx.lineTo(leftHeadX,  leftHeadY);
+    ctx.moveTo(tipX, tipY); ctx.lineTo(rightHeadX, rightHeadY);
+    // lông đuôi
+    ctx.moveTo(shaftStartX, shaftStartY); ctx.lineTo(leftTailX,  leftTailY);
+    ctx.moveTo(shaftStartX, shaftStartY); ctx.lineTo(rightTailX, rightTailY);
+
+    ctx.lineWidth = 2;
+    ctx.strokeStyle = "#aef";
+    ctx.stroke();
+      }
     // 3. Các loại đạn còn lại (của người chơi, clone...)
     else {
         if (b.piercing) {
@@ -8820,6 +9132,7 @@ function startGame() {
   playRandomNormalMusic(); // Bắt đầu phát nhạc ngẫu nhiên
   showUpgradePopup();        // 🎁 Gọi nâng cấp trước
   pendingWave = wave;        // 🌊 Wave sẽ hiển thị sau khi nâng cấp xong
+  updateAmmoDisplay();      // Cập nhật hiển thị đạn
 }
 /**
  * Thiết lập lại toàn bộ trạng thái của game để bắt đầu một lượt chơi mới.
@@ -8858,17 +9171,23 @@ function resetGame() {
     player.score = 0;
     zombieKillCount = 0;
     player.isDying = false;
+    player.ammo = { 0: 100, 1: 150, 2: 100, 3: 50, 4: 20 };
     player.x = canvas.width / 2; // Đưa player về giữa màn hình
     player.y = canvas.height / 2;
 
     // 4. Reset các chỉ số nâng cấp của người chơi
     // QUAN TRỌNG: Xem lưu ý ở dưới về các nâng cấp vĩnh viễn
-    playerUpgrades.fireRate = 1;
+    playerUpgrades.iceArrow = 1;
     playerUpgrades.damageBoost = 1;
     playerUpgrades.hpBoost = 0;
     playerUpgrades.bulletSpeed = 1;
     playerUpgrades.lineBulletCount = 1;
-
+    // Xóa các nâng cấp mua trong Shop
+    shopUpgrades.iceArrowSpeedLevel = 0; // xóa bonus tốc độ mũi tên băng
+    iceArrowRateShopSteps = 0;                 // xóa bonus tốc độ mua trong Shop
+    iceArrowDamageShop    = 0;                 // xóa bonus sát thương mua trong Shop
+    window.manualShootCooldownBase = manualShootCooldown; // trả cooldown gốc 1x
+    lastManualShootTime = 0;                   // cho phép bắn ngay khi vào game
     // 5. Reset các nâng cấp kỹ năng
     skillUpgrades.bladeCount = 2;
     skillUpgrades.bladeDamage = 1;
@@ -9084,12 +9403,70 @@ function purchaseShopItem(itemId) {
                 if (item.id.includes('energy')) player.energy += item.value;
                 if (item.id.includes('hp')) player.hearts += item.value;
                 break;
-            
-            // Trường hợp mua nâng cấp vĩnh viễn cho chỉ số cơ bản của người chơi.
-            case 'permanent_upgrade':
-                if (item.id === 'buy_damage') playerUpgrades.damageBoost += item.value;
+            case 'crit': {
+                if (player.coins < item.cost) { showWarning('Không đủ xu'); return; }
+                player.coins -= item.cost;
+
+                if (item.sub === 'rate') {
+                  // Không cộng vượt trần ngay tại đây; trần áp ở getCritRate()
+                  addCritRateBuff(item.value, item.durationMs);
+                  showWarning(`✨ Crit Rate +${Math.round(item.value*100)}% trong ${Math.round(item.durationMs/1000)}s`);
+                } else if (item.sub === 'dmg') {
+                  addCritDmgBuff(item.value, item.durationMs);
+                  showWarning(`💥 Crit Dmg +${Math.round(item.value*100)}% trong ${Math.round(item.durationMs/1000)}s`);
+                } else {
+                  // nếu sau này còn subtype khác
+                  showWarning('Crit item chưa hỗ trợ');
+                  player.coins += item.cost; // hoàn xu
+                }}
                 break;
-            
+            case 'ice': {
+              if (item.id === 'buy_ice_rate') {
+                // chặn vượt trần 3x
+                if (getIceArrowRate() >= ICE_ARROW_RATE_MAX) {
+                  showWarning('Tốc độ Ice Arrow đã tối đa!');
+                  player.coins += item.cost; // hoàn lại xu vì không áp dụng được
+                } else {
+                  iceArrowRateShopSteps += 1; // mỗi lần mua +0.5x
+                }
+              } else if (item.id === 'buy_ice_damage') {
+                iceArrowDamageShop += item.value; // mỗi lần mua +dmg riêng (vd +1)
+              }
+              break;
+            }
+           case 'ammo':
+                if (player.ammo.hasOwnProperty(item.targetAmmoIndex)) {
+                    player.ammo[item.targetAmmoIndex] += item.value;
+                    // Cập nhật hiển thị ngay lập tức nếu người chơi đang chọn loại đạn đó
+                    if (clickShotMode === item.targetAmmoIndex) {
+                        updateAmmoDisplay();
+                    }
+                }
+                break;
+            // Trường hợp mua nâng cấp vĩnh viễn cho chỉ số cơ bản của người chơi.
+            case 'permanent_upgrade': {
+              if (item.id === 'buy_damage') {
+                playerUpgrades.damageBoost += item.value;
+                break;
+              }
+              if (item.id === 'buy_ice_arrow_speed') {
+                // Chặn mua khi đã đạt trần 3.0
+                if (getIceArrowSpeed() >= 3) {
+                  showWarning("🏹 Ice Arrow speed đã tối đa!");
+                  // Hoàn xu nếu trước đó đã bị trừ bởi logic ở trên (tuỳ bản hàm bạn giữ)
+                  player.coins += item.cost;
+                  break;
+                }
+                // +0.5 mỗi lần
+                shopUpgrades.iceArrowSpeedLevel = (shopUpgrades.iceArrowSpeedLevel || 0) + 1;
+
+                showWarning(`🏹 Ice Arrow speed: x${getIceArrowSpeed().toFixed(1)}`);
+                updateStatsOverlay();
+                populateShop();
+                break;
+              }
+              break;
+            }
             // Trường hợp mua các loại buff tạm thời.
             case 'buff':
                 if (item.id === 'buy_lucky') luckyBuffEndTime = Date.now() + 45000;
@@ -9148,7 +9525,7 @@ function showWavePopup() {
 
 // 🎯 Giá trị theo cấp độ kỹ năng (mỗi cấp tăng dần)
 const UPGRADE_TIERS = {
-  fireRate: [1, 2, 3],
+  iceArrow: [1, 2, 3],
   damageBoost: [0.5, 1, 1.5],
   hpBoost: [5, 10, 15],            
   bulletSpeed: [0.25, 0.5, 1]
@@ -9163,9 +9540,9 @@ function showUpgradePopup() {
 
   // 📌 Bảng giá trị tương ứng với từng bậc nâng cấp
   const UPGRADE_VALUES = {
-    Bạc: { fireRate: 1, damageBoost: 0.5, hpBoost: 5, bulletSpeed: 0.25 },
-    Vàng: { fireRate: 2, damageBoost: 1, hpBoost: 10, bulletSpeed: 0.5 },
-    Kim: { fireRate: 3, damageBoost: 1.5, hpBoost: 15, bulletSpeed: 1 },
+    Bạc: { iceArrow: 1, damageBoost: 0.5, hpBoost: 5, bulletSpeed: 0.25 },
+    Vàng: { iceArrow: 2, damageBoost: 1, hpBoost: 10, bulletSpeed: 0.5 },
+    Kim: { iceArrow: 3, damageBoost: 1.5, hpBoost: 15, bulletSpeed: 1 },
     Rare: { moveSpeed: 0.2 } // 👟 tốc độ chạy – bậc hiếm
   };
   // 🎖 Màu viền tương ứng từng bậc
@@ -9176,7 +9553,7 @@ function showUpgradePopup() {
     Rare: "#3399ff" // màu xanh bậc hiếm
   };
   // Giới hạn nâng cấp kỹ năng
-  const MAX_FIRE_RATE = 21; // 🔫 hướng bắn
+  const MAX_FIRE_RATE = 21; // 🏹 Ice Arrow
   const MAX_LINE_BULLETS = 10; // 🔫 số lượng đạn
   const MAX_MOVE_SPEED = 3; // 👟 tốc độ di chuyển tối đa
   const MAX_BULLET_SPEED = 10; // 🚀 tốc độ đạn tối đa
@@ -9202,7 +9579,7 @@ function showUpgradePopup() {
       const tier = randomTier();
       const value = { Bạc: 0.5, Vàng: 1, Kim: 1.5 }[tier];
       allUpgrades.push({
-        name: `🔪 +${value} sát thương đao`,
+        name: `🔪 +${value} Dmg đao`,
         tier,
         effect: () => {
           skillUpgrades.bladeDamage += value;
@@ -9232,7 +9609,7 @@ function showUpgradePopup() {
       const tier = randomTier();
       const value = { Bạc: 0.5, Vàng: 1, Kim: 1.5 }[tier];
       allUpgrades.push({
-        name: `⚔️ +${value} sát thương kiếm`,
+        name: `⚔️ +${value} Dmg kiếm`,
         tier,
         effect: () => {
           skillUpgrades.swordDamage += value;
@@ -9262,7 +9639,7 @@ function showUpgradePopup() {
       const tier = randomTier();
       const value = { Bạc: 0.5, Vàng: 1, Kim: 1.5 }[tier];
       allUpgrades.push({
-        name: `🔥 +${value} sát thương lửa`,
+        name: `🔥 +${value} Dmg lửa`,
         tier,
         effect: () => {
           skillUpgrades.fireDamage += value;
@@ -9292,7 +9669,7 @@ function showUpgradePopup() {
       const tier = randomTier();
       const value = { Bạc: 0.5, Vàng: 1, Kim: 1.5 }[tier];
       allUpgrades.push({
-        name: `❄️ +${value} sát thương băng`,
+        name: `❄️ +${value} Dmg băng`,
         tier,
         effect: () => {
           skillUpgrades.iceDamage += value;
@@ -9322,7 +9699,7 @@ function showUpgradePopup() {
       const tier = randomTier();
       const value = { Bạc: 1, Vàng: 2, Kim: 3 }[tier];
       allUpgrades.push({
-        name: `🔵 +${value} sát thương lôi`,
+        name: `🔵 +${value} Dmg lôi`,
         tier,
         effect: () => {
           skillUpgrades.thunderDamage += value;
@@ -9333,19 +9710,19 @@ function showUpgradePopup() {
     }
   }
 
-  // 🔫 Hướng bắn – nếu chưa max
-  if (playerUpgrades.fireRate < MAX_FIRE_RATE) {
+  // 🏹 Ice Arrow – nếu chưa max
+  if (playerUpgrades.iceArrow < MAX_FIRE_RATE) {
     const tier = randomTier();
-    const value = UPGRADE_VALUES[tier].fireRate;
+    const value = UPGRADE_VALUES[tier].iceArrow;
     allUpgrades.push({
-      name: "🔫 Hướng bắn",
-      key: "fireRate",
+      name: "🏹 Ice Arrow",
+      key: "iceArrow",
       tier,
       value,
       effect: () => {
-        const added = Math.min(playerUpgrades.fireRate + value, MAX_FIRE_RATE) - playerUpgrades.fireRate;
-        playerUpgrades.fireRate += added;
-        showWarning(`🔫 +${added} hướng bắn`);
+        const added = Math.min(playerUpgrades.iceArrow + value, MAX_FIRE_RATE) - playerUpgrades.iceArrow;
+        playerUpgrades.iceArrow += added;
+        showWarning(`🏹 +${added} Ice Arrow`);
         updateStatsOverlay();
       }
     });
@@ -9669,26 +10046,29 @@ function updateStatsOverlay() {
   const alive  = zombies.length;      // đang còn trên bản đồ
   const killed = zombieKillCount;     // đã tiêu diệt
   const total  = alive + killed;      // tổng thực
-document.getElementById("stat-damage").innerText =
-  `💥 Sát thương: ${(playerUpgrades.damageBoost || 1).toFixed(1)}`;
+const now = Date.now();
+  document.getElementById("stat-damage").innerText =
+  `💥 Dmg: ${(playerUpgrades.damageBoost || 1).toFixed(1)} | Crit: ${Math.round(getCritRate(now)*100)}% | x ${(1+getCritDmg(now)).toFixed(2)}`;
   document.getElementById("stat-spawned").innerText = `🧟 Tổng số zombie: ${total}`;
   document.getElementById("stat-alive").innerText   = `🧟 Đang còn sống: ${alive}`;
   document.getElementById("stat-total").innerText   = `🧟 Đã tiêu diệt: ${killed}`;
-  document.getElementById("stat-speed").innerText = `💨 Tốc độ: ${playerUpgrades.bulletSpeed.toFixed(1)}`;
-  document.getElementById("stat-fireRate").innerText = `🔫 Hướng bắn: ${playerUpgrades.fireRate}`;
+  document.getElementById("stat-speed").innerText =
+  `💨 Att.speed: ${playerUpgrades.bulletSpeed.toFixed(1)} | 🏹: ${getIceArrowSpeed().toFixed(1)}`;
+  document.getElementById("stat-iceArrow").innerText =
+  `🏹 Ice Arrow: ${playerUpgrades.iceArrow} | +${getIceArrowBonusDamage().toFixed(1)} dmg | ${getIceArrowRate().toFixed(1)}x `;
   document.getElementById("stat-lineCount").innerText = `🧨 Số lượng đạn: ${playerUpgrades.lineBulletCount}`;
   document.getElementById("stat-moveSpeed").innerText = `👟 Tốc độ chạy: ${player.speed.toFixed(1)}`;
   // 🔪 Thống kê kỹ năng mặc định
-document.getElementById("stat-blade").innerText = `🔪 Đao: ${skillUpgrades.bladeCount} đao, ${skillUpgrades.bladeDamage.toFixed(1)} dmg`;
-document.getElementById("stat-sword").innerText = `⚔️ Kiếm: Lv${skillUpgrades.swordLevel}, ${skillUpgrades.swordDamage.toFixed(1)} dmg`;
-document.getElementById("stat-fire").innerText = `🔥 Lửa: ${skillUpgrades.fireCount} lửa, ${skillUpgrades.fireDamage.toFixed(1)} dmg`;
-document.getElementById("stat-ice").innerText = `❄️ Băng: ${skillUpgrades.iceCount} băng, ${skillUpgrades.iceDamage.toFixed(1)} dmg`;
-document.getElementById("stat-thunder").innerText = `🔵 Lôi: ${skillUpgrades.thunderCount} cầu, ${skillUpgrades.thunderDamage.toFixed(1)} dmg`;
+  document.getElementById("stat-blade").innerText = `🔪 Đao: ${skillUpgrades.bladeCount} đao, ${skillUpgrades.bladeDamage.toFixed(1)} dmg`;
+  document.getElementById("stat-sword").innerText = `⚔️ Kiếm: Lv${skillUpgrades.swordLevel}, ${skillUpgrades.swordDamage.toFixed(1)} dmg`;
+  document.getElementById("stat-fire").innerText = `🔥 Lửa: ${skillUpgrades.fireCount} lửa, ${skillUpgrades.fireDamage.toFixed(1)} dmg`;
+  document.getElementById("stat-ice").innerText = `❄️ Băng: ${skillUpgrades.iceCount} băng, ${skillUpgrades.iceDamage.toFixed(1)} dmg`;
+  document.getElementById("stat-thunder").innerText = `🔵 Lôi: ${skillUpgrades.thunderCount} cầu, ${skillUpgrades.thunderDamage.toFixed(1)} dmg`;
 // Kỹ năng khác
 const skillText = Object.entries(skillStats)
-    .map(([key, value]) => `${key}: ${value}`)
-    .join("<br>");
-    document.getElementById("stat-skills").innerHTML = skillText;
+  .map(([key, value]) => `${key}: ${value}`)
+  .join("<br>");
+  document.getElementById("stat-skills").innerHTML = skillText;
 
 // 🧟 Zombie theo cấp: chỉ hiển thị từ Cấp 1 → 10
   let breakdown = "";
@@ -10880,7 +11260,7 @@ function populateDebugMenu() {
     setSliderValue('debug-energy', player.energy);
     setSliderValue('debug-moveSpeed', player.speed);
     setSliderValue('debug-damage', playerUpgrades.damageBoost);
-    setSliderValue('debug-fireRate', playerUpgrades.fireRate);
+    setSliderValue('debug-iceArrow', playerUpgrades.iceArrow);
     setSliderValue('debug-bulletSpeed', playerUpgrades.bulletSpeed);
     setSliderValue('debug-lineCount', playerUpgrades.lineBulletCount);
     setSliderValue('debug-coin', player.coins);
@@ -10941,7 +11321,7 @@ function applyDebugChanges() {
     player.energy = parseInt(document.getElementById('debug-energy').value);
     player.speed = parseFloat(document.getElementById('debug-moveSpeed').value);
     playerUpgrades.damageBoost = parseFloat(document.getElementById('debug-damage').value);
-    playerUpgrades.fireRate = parseInt(document.getElementById('debug-fireRate').value);
+    playerUpgrades.iceArrow = parseInt(document.getElementById('debug-iceArrow').value);
     playerUpgrades.bulletSpeed = parseFloat(document.getElementById('debug-bulletSpeed').value);
     playerUpgrades.lineBulletCount = parseInt(document.getElementById('debug-lineCount').value);
     player.coins = parseInt(document.getElementById('debug-coin').value);
@@ -11191,8 +11571,8 @@ function togglePauseMenu() {
   🏆 Kỷ lục: 0
   </div>
   <div id="stat-moveSpeed">👟 Tốc độ chạy: - </div>
-  <div id="stat-damage">💥 Sát thương: - </div>
-  <div id="stat-fireRate">🔫 Hướng bắn: - </div>
+  <div id="stat-damage">💥 Dmg: - </div>
+  <div id="stat-iceArrow">🏹 Ice Arrow: - </div>
   <div id="stat-speed">💨 Tốc độ: - </div>
   <div id="stat-lineCount">🧨 Số lượng đạn: - </div>
   <div id="stat-blade">🔪 Đao: -</div>
@@ -11279,9 +11659,9 @@ FPS: --
       <input type="range" id="debug-damage" min="1" max="100" step="0.5">
       <span class="range-value">1.0</span>
     </div>
-    <label for="debug-fireRate">🔫 Hướng bắn:</label>
+    <label for="debug-iceArrow">🏹 Ice Arrow:</label>
     <div class="range-container">
-      <input type="range" id="debug-fireRate" min="1" max="21" step="1">
+      <input type="range" id="debug-iceArrow" min="1" max="21" step="1">
       <span class="range-value">1</span>
     </div>
     <label for="debug-bulletSpeed">💨 Tốc độ đạn:</label>
@@ -11414,7 +11794,7 @@ FPS: --
         <input type="range" id="debug-bladeCount" min="2" max="20" step="1">
         <span class="range-value">2</span>
     </div>
-    <label for="debug-bladeDamage">🔪 Sát thương đao:</label>
+    <label for="debug-bladeDamage">🔪 Dmg đao:</label>
     <div class="range-container">
         <input type="range" id="debug-bladeDamage" min="1" max="50" step="0.5">
         <span class="range-value">1.0</span>
@@ -11424,7 +11804,7 @@ FPS: --
         <input type="range" id="debug-swordLevel" min="1" max="10" step="1">
         <span class="range-value">1</span>
     </div>
-    <label for="debug-swordDamage">⚔️ Sát thương kiếm:</label>
+    <label for="debug-swordDamage">⚔️ Dmg kiếm:</label>
     <div class="range-container">
         <input type="range" id="debug-swordDamage" min="1" max="50" step="0.5">
         <span class="range-value">1.0</span>
@@ -11434,7 +11814,7 @@ FPS: --
         <input type="range" id="debug-fireCount" min="2" max="10" step="1">
         <span class="range-value">2</span>
     </div>
-    <label for="debug-fireDamage">🔥 Sát thương lửa:</label>
+    <label for="debug-fireDamage">🔥 Dmg lửa:</label>
     <div class="range-container">
         <input type="range" id="debug-fireDamage" min="1" max="50" step="0.5">
         <span class="range-value">1.0</span>
@@ -11444,7 +11824,7 @@ FPS: --
         <input type="range" id="debug-iceCount" min="2" max="10" step="1">
         <span class="range-value">2</span>
     </div>
-    <label for="debug-iceDamage">❄️ Sát thương băng:</label>
+    <label for="debug-iceDamage">❄️ Dmg băng:</label>
     <div class="range-container">
         <input type="range" id="debug-iceDamage" min="1" max="50" step="0.5">
         <span class="range-value">1.0</span>
@@ -11454,12 +11834,12 @@ FPS: --
         <input type="range" id="debug-thunderCount" min="2" max="6" step="1">
         <span class="range-value">2</span>
     </div>
-    <label for="debug-thunderDamage">🔵 Sát thương lôi:</label>
+    <label for="debug-thunderDamage">🔵 Dmg lôi:</label>
     <div class="range-container">
         <input type="range" id="debug-thunderDamage" min="1" max="50" step="0.5">
         <span class="range-value">1.0</span>
     </div>
-<label for="debug-auraHealLevel">✨ Cấp hồi máu Aura:</label>
+<label for="debug-auraHealLevel">✨ Cấp Heal Aura:</label>
     <div class="range-container">
         <input type="range" id="debug-auraHealLevel" min="0" max="5" step="1">
         <span class="range-value">0</span>
@@ -11471,13 +11851,13 @@ FPS: --
         <span class="range-value">1</span>
     </div>
 
-    <label for="debug-fairyHealLevel">🦋 Cấp hồi máu Fairy:</label>
+    <label for="debug-fairyHealLevel">🦋 Cấp Heal Fairy:</label>
     <div class="range-container">
         <input type="range" id="debug-fairyHealLevel" min="0" max="10" step="1">
         <span class="range-value">0</span>
     </div>
     
-    <label for="debug-fairyDamageLevel">🦋 Cấp sát thương Fairy:</label>
+    <label for="debug-fairyDamageLevel">🦋 Cấp Dmg Fairy:</label>
     <div class="range-container">
         <input type="range" id="debug-fairyDamageLevel" min="0" max="10" step="1">
         <span class="range-value">0</span>
@@ -11537,7 +11917,8 @@ FPS: --
     <button id="closeShopBtn">Đóng</button>
   </div>
 </div>
-
+<!-- Hiển thị đạn -->
+<div id="ammoDisplay"></div>
 <!-- 🎵 Âm thanh nền và hiệu ứng âm thanh -->
 <audio id="music-background" src="sounds/background-music.mp3"></audio>
 <audio id="music-background-2" src="sounds/background-music-2.mp3"></audio>
