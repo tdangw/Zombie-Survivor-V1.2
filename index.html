@@ -1615,6 +1615,9 @@ const buffEffects = {
     exp:    { color: "#ffeb3b", active: false, angle: 0 }, // Vàng (Exp)
     magnet: { color: "#8b5cf6", active: false, angle: 0 }, // Tím (Magnet)
     crazymadness: { color: "#3b82f6", active: false, angle: 0 }, // Xanh dương (CrazyMadnessTime)
+    critRate: { color: "orange", active: false, angle: 0 }, // Cam (Crit Rate)
+    critDmg:  { color: "#c084fc", active: false, angle: 0 }, // Tím nhạt (Crit Dmg)
+// Thêm các buff khác nếu cần
 };
 // --- Tỉ lệ rơi vật phẩm trong game ---
 const itemDropTable = [
@@ -1624,7 +1627,7 @@ const itemDropTable = [
   // --- Vật phẩm Hiếm ---
   { type: 'box',              chance: 0.008 }, // 0.8%
   { type: 'magnet',           chance: 0.003 }, // 0.3%
-  { type: 'secret',           chance: 0.200 }, // 20%
+  { type: 'secret',           chance: 0.194 }, // 19.4%
   { type: 'potion',           chance: 0.015 }, // 1.5%
 
   // --- Buff (đã giảm) ---
@@ -1632,7 +1635,8 @@ const itemDropTable = [
   { type: 'power',            chance: 0.003 }, // 0.3%
   { type: 'crazy',            chance: 0.003 }, // 0.3%
   { type: 'exp',              chance: 0.003 }, // 0.3%
-
+  { type: 'critRateBuff',     chance: 0.003 }, // 0.3%
+  { type: 'critDmgBuff',      chance: 0.003 }, // 0.3%
   // --- Thường ---
   { type: 'expBonus',         chance: 0.010 }, // 1.0%
   { type: 'hp',               chance: 0.050 }, // 5.0%
@@ -1661,9 +1665,9 @@ const shopItems = [
     { id: 'buy_12_hp',      name: '12 HP',      icon: '❤️', cost: 2, type: 'resource', value: 12 },
     { id: 'buy_damage',    name: 'Dmg +0.2', icon: '💥', cost: 3, type: 'permanent_upgrade', value: 0.2 },
     // --- Mua đạn ---
-    { id: 'buy_ice_arrow_speed', name: '+0.5 speed', icon: '🏹', cost: 3, type: 'permanent_upgrade' },
     { id:'crit_rate_30s', name:'Crit Rate +15%', icon:'💥', type:'crit', sub:'rate', value:0.15, durationMs:60000, cost:4 },
     { id:'crit_dmg_30s',  name:'Crit Dmg +25%',  icon:'💥', type:'crit', sub:'dmg',  value:0.25, durationMs:60000, cost:4 },
+    { id: 'buy_ice_arrow_speed', name: '+0.5 speed', icon: '🏹', cost: 3, type: 'permanent_upgrade' },
     { id: 'buy_ice_rate',   name: '+0.5 att.speed', icon: '🏹', cost: 10, type: 'ice', value: 0.5 },
     { id: 'buy_ice_damage', name: '+1 dmg',           icon: '🏹', cost: 5, type: 'ice', value: 1   },
     { id: 'buy_ammo_spiral', name: '+50 Xoắn ốc', icon: '🔄', cost: 10, type: 'ammo', value: 50, targetAmmoIndex: 0 },
@@ -2809,7 +2813,7 @@ function dealDamageToZombie(z, dmg = 1) {
         // Tăng sát thương x2 (vẫn giữ nguyên)
         finalDamage *= 2;
 
-        // 1. Tỉ lệ Crit giảm còn 10%
+        // 1. Tỉ lệ Crit 30%
         const isCrit = Math.random() < 0.3;
 
         // Nếu crit thành công...
@@ -4237,6 +4241,8 @@ function collectLoot() {
     case "magnet": magnetBuffEndTime = Date.now() + 30000; queuePetLootPopup("🧲"); playSound('sfx-powerup', 0.8); break;
     case "crazymadnesstime": crazyMadnessTimeEndTime = Date.now() + 30000; queuePetLootPopup("💢");
     playSound('sfx-powerup', 0.8); break;
+    case "critRateBuff": addCritRateBuff(0.15, 45000); queuePetLootPopup("✨"); playSound('sfx-powerup', 0.8); break;
+    case "critDmgBuff": addCritDmgBuff(0.25, 45000); queuePetLootPopup("💥"); playSound('sfx-powerup', 0.8); break;
     case "potion":
         const baseHeal = getRandomInt(10, 20);
         const bonusHeal = Math.round((player.level + wave) * 1.5);
@@ -4502,6 +4508,11 @@ function sysUpdateBuffCore(now) {
   buffEffects.exp.active    = now < expBuffEndTime;
   buffEffects.magnet.active = now < magnetBuffEndTime;
   buffEffects.crazymadness.active = now < crazyMadnessTimeEndTime;
+  _compactTimedBuffs(_critRateBuffs, now);
+  _compactTimedBuffs(_critDmgBuffs, now);
+  buffEffects.critRate.active = _critRateBuffs.length > 0;
+  buffEffects.critDmg.active = _critDmgBuffs.length > 0;
+
   for (const k in buffEffects) { const b = buffEffects[k]; if (b && b.active) b.angle += 0.01; }
 }
 
@@ -5048,9 +5059,9 @@ function sysPickupItemsAndLevel(now) {
         case 'mana':   player.mana += 1;   queuePlayerLootPopup("💠"); break;
         case 'hp':     player.hearts += 1; createHealImpactEffect(player, 1); queuePlayerLootPopup("❤️"); break;
         case 'potion': {
-          const baseHeal = (Math.random()*11|0) + 10, bonus = Math.round((player.level + wave) * 1.5), total = baseHeal + bonus;
-          player.hearts += total; createHealImpactEffect(player, total); showWarning(`💊 +${total} HP`);
-        } break;
+        const baseHeal = (Math.random()*11|0) + 10, bonus = Math.round((player.level + wave) * 1.5), total = baseHeal + bonus; player.hearts += total; createHealImpactEffect(player, total); showWarning(`💊 +${total} HP`); } break;
+        case 'critRateBuff': addCritRateBuff(0.15, 45000); showWarning("✨ Tăng tỉ lệ chí mạng!"); playSound('sfx-powerup', 0.8); break;
+        case 'critDmgBuff': addCritDmgBuff(0.25, 45000); showWarning("💥 Tăng sát thương chí mạng!"); playSound('sfx-powerup', 0.8); break;
         case 'box': openItemBox(); break;
       }
       it.active = false;
@@ -8189,7 +8200,7 @@ if (z.slowEndTime && Date.now() < z.slowEndTime) {
 
 // Chọn màu chữ: nếu là Tinh Anh thì màu đỏ, không thì màu trắng
 ctx.fillStyle = z.isElite ? "#ff4c4c" : "#fff"; 
-ctx.font = "10px sans-serif";
+ctx.font = "12px sans-serif";
 ctx.textAlign = "center";
 ctx.shadowBlur = 0;
 ctx.fillText(z.style || 'Normal', z.x, z.y + z.radius + 18);
@@ -8547,6 +8558,14 @@ function drawItems() {
       case 'crazymadnesstime':
         icon = "💢";
         color = "#0613c5"; // Màu xanh dương đồng bộ với halo và UI
+        break;
+      case 'critRateBuff':
+        icon = "✨";
+        color = "orange";
+        break;
+      case 'critDmgBuff':
+        icon = "💥";
+        color = "#c084fc"; // Dùng màu tím nhạt giống màu hào quang
         break;
       case 'coin':
         icon = "🪙";
@@ -9268,6 +9287,8 @@ function resetGame() {
     crazyMadnessTimeEndTime = 0;
     isCrazyMadnessTimeActive = false;
     crazyMadnessTimeBuffStats = {};
+    _critRateBuffs.length = 0; // Xóa tất cả buff cộng tỉ lệ chí mạng
+    _critDmgBuffs.length = 0;  // Xóa tất cả buff cộng sát thương chí mạng
 
     // --- Reset các Kỹ năng Passive (có nút bấm trên UI) ---
     autoShoot = false; // Tắt auto-shoot để người chơi tự bật lại
