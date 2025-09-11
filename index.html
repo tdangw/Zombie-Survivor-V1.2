@@ -2100,14 +2100,27 @@ const canvas = document.getElementById("game");
 const ctx = canvas.getContext("2d");
 // ========= Zombie Inspector — Hover to show popup (no Ctrl+Click) =========
 (function ZombieInspectorHover() {
-  // 1) Lấy đúng canvas
   const canvas = document.getElementById('game')
              || document.getElementById('gameCanvas')
              || document.getElementById('canvas')
              || document.querySelector('canvas');
   if (!canvas) { console.warn('[Inspector] Không tìm thấy canvas'); return; }
 
-  // 2) Đọc biến "let" trong file (ưu tiên) hoặc fallback window.*
+  // ====== Cấu hình kỹ năng mặc định ======
+  // Kỹ năng mặc định theo LOẠI (có thể sửa/ mở rộng tuỳ ý)
+  const SKILL_BY_TYPE = {
+    normal:   ['Đi bộ', 'Cắn'],
+    elite:    ['Tăng chỉ số', 'Lao nhanh'],
+    miniBoss: ['Máu cao', 'Hất văng'],
+    boss:     ['Gầm thét', 'Triệu hồi'],
+    bigBoss:  ['Đòn diện rộng', 'Cuồng nộ']
+  };
+  // Ghi đè theo TÊN cụ thể (ưu tiên cao hơn type). Ví dụ:
+  // 'Zombie Băng': ['Đóng băng', 'Bắn mảnh băng']
+  const SKILL_BY_NAME = {
+    // Thêm: 'TênZombie': ['Skill A', 'Skill B']
+  };
+
   const ZLIST = () => (typeof zombies !== 'undefined' ? zombies :
                       (window.zombies || window.enemyList || window.enemies || []));
   const CAMX  = () => (typeof camera  !== 'undefined' ? (camera.x||0) :
@@ -2115,22 +2128,17 @@ const ctx = canvas.getContext("2d");
   const CAMY  = () => (typeof camera  !== 'undefined' ? (camera.y||0) :
                       (window.camera?.y ?? window.camY ?? window.cameraY ?? 0));
 
-  // 3) Helpers
   function fmtAbbr(n){ n=Math.max(0,Math.floor(n||0)); const t=v=>String(v.toFixed(1)).replace(/\.0$/,'');
     if(n>=1e9)return t(n/1e9)+'B'; if(n>=1e6)return t(n/1e6)+'M'; if(n>=1e3)return t(n/1e3)+'k'; return String(n); }
 
-  // Map toạ độ client -> pixel của canvas (đúng khi canvas bị CSS scale)
   function toCanvasSpace(clientX, clientY){
     const rect = canvas.getBoundingClientRect();
     const sx = canvas.width  / rect.width;
     const sy = canvas.height / rect.height;
     return { x: (clientX-rect.left)*sx, y: (clientY-rect.top)*sy };
   }
-
-  // Game của bạn đang dùng ctx.translate(-camera.x, -camera.y)
   function worldToScreen(x, y){ return { x: x - CAMX(), y: y - CAMY() }; }
 
-  // Chọn zombie gần điểm (sx,sy) trên canvas
   function pickZombieAt(sx, sy){
     const list = ZLIST();
     let best=null, bestD=1e9;
@@ -2138,14 +2146,13 @@ const ctx = canvas.getContext("2d");
       const z = list[i];
       if (!z || z.hp<=0 || z.active===false || z.dead) continue;
       const p = worldToScreen(z.x, z.y);
-      const r = (z.radius || 16) + 12; // nới 12px để dễ hover
+      const r = (z.radius || 16) + 12;
       const d = Math.hypot(p.x - sx, p.y - sy);
       if (d < r && d < bestD) { best = z; bestD = d; }
     }
     return best;
   }
 
-  // 4) Popup (inline style, pointer-events: none để không chặn chuột)
   function ensurePopup(){
     let el = document.getElementById('zombieInfoPopup');
     if (!el){
@@ -2171,94 +2178,115 @@ const ctx = canvas.getContext("2d");
     if (T + r.height > vh - 8) T = vh - r.height - 8;
     el.style.left = L + 'px'; el.style.top = T + 'px';
   }
-  // Lấy Max HP an toàn: chọn MAX của tất cả trường có thể có, fallback = currentHP
-function getMaxHP(z) {
-  const cur = Number(z.hp ?? z.health ?? 0);
-  const cand = [
-    z.hpMax, z.maxHp, z.maxHP, z.baseHp, z.baseHP,
-    z.maxHealth, z.healthMax, z.hp_cap, z.hp_max
-  ].map(v => Number(v ?? 0)).filter(v => v > 0);
-  const best = cand.length ? Math.max(...cand) : 0;
-  // Nếu các trường max bị set mặc định 1, dùng max giữa currentHP và best (>=1)
-  return Math.max(1, cur, best);
+
+  // Lấy Max HP an toàn
+  function getMaxHP(z) {
+    const cur = Number(z.hp ?? z.health ?? 0);
+    const cand = [ z.hpMax, z.maxHp, z.maxHP, z.baseHp, z.baseHP, z.maxHealth, z.healthMax, z.hp_cap, z.hp_max ]
+      .map(v => Number(v ?? 0)).filter(v => v > 0);
+    const best = cand.length ? Math.max(...cand) : 0;
+    return Math.max(1, cur, best);
+  }
+
+  // Nhận diện LOẠI (trả về key & label; có cả 'normal')
+  function getType(z) {
+    const isBigBoss = !!(z.isBigBoss || z.bigBoss || z.rank === 'bigBoss' || z.type === 'bigBoss');
+    const isBoss    = !isBigBoss && !!(z.isBoss || z.boss || z.rank === 'boss' || z.type === 'boss');
+    const isMini    = !isBigBoss && !isBoss && !!(
+      z.isMiniBoss || z.miniBoss || z.isMini || z.mini ||
+      z.rank === 'miniBoss' || z.rank === 'mini_boss' ||
+      z.type === 'miniBoss' || z.type === 'mini_boss' || z.level === 99
+    );
+    const isElite   = !!(z.isElite || z.elite || z.rank === 'elite' || z.tier === 'elite');
+
+    /** Chọn duy nhất 1 loại chính để hiển thị & map skill */
+    let typeKey = 'normal', typeLabel = 'Thường';
+    if (isBigBoss) { typeKey = 'bigBoss'; typeLabel = 'Big Boss'; }
+    else if (isBoss) { typeKey = 'boss'; typeLabel = 'Boss'; }
+    else if (isMini) { typeKey = 'miniBoss'; typeLabel = 'Mini Boss'; }
+    else if (isElite){ typeKey = 'elite'; typeLabel = 'Tinh anh'; }
+
+    return { typeKey, typeLabel };
+  }
+
+  // Lấy danh sách kỹ năng theo ưu tiên:
+  // 1) z.skills (nếu có)  >  2) override theo tên  >  3) theo loại  >  4) z.skillNames  >  []
+  function getSkillsFor(z, typeKey) {
+    const explicit = Array.isArray(z.skills) ? z.skills : (Array.isArray(z.skillNames) ? z.skillNames : null);
+    if (explicit && explicit.length) return explicit;
+
+    const nameKey = String(z.displayName || z.name || z.style || '').trim();
+    if (nameKey && Array.isArray(SKILL_BY_NAME[nameKey])) return SKILL_BY_NAME[nameKey];
+
+    const byType = SKILL_BY_TYPE[typeKey];
+    return Array.isArray(byType) ? byType : [];
+  }
+
+  function tagHTML(t){
+    return `<span style="display:inline-block;padding:1px 6px;border-radius:999px;border:1px solid rgba(255,255,255,.15);font-size:11px;margin-right:6px">${t}</span>`;
+  }
+// EXP cơ bản (trước ±10% và buff), bám đúng 3.1 bạn gửi
+function calcExpBase(z){
+  const w = (typeof wave !== 'undefined' ? wave : (globalThis.wave|0)) || 1;
+
+  if (z.isBigBoss) return calculateScaledBossExp(1000, w);
+  if (z.isBoss)    return calculateScaledBossExp(100,  w);
+  if (z.type === 'miniBoss' || z.isMiniBoss) return calculateScaledBossExp(10, w);
+
+  const base = z.isElite ? 5 : 1;
+  const levelBonus = (z.level || 1) - 1;
+  const waveBonus  = w - 1;
+  return base + levelBonus + waveBonus;
 }
+  function showZombieInfo(z, clientX, clientY){
+    const el = ensurePopup();
+    const name = z.style || z.name || 'Zombie';
+    const lv   = z.level ?? 1;
 
-// Nhận diện phân loại (bao quát nhiều trường đặt tên khác nhau)
-function classifyZombie(z) {
-  const isBigBoss = !!(z.isBigBoss || z.bigBoss || z.rank === 'bigBoss' || z.type === 'bigBoss');
-  const isBoss    = !isBigBoss && !!(z.isBoss || z.boss || z.rank === 'boss' || z.type === 'boss');
-  const isMiniBoss= !isBigBoss && !isBoss && !!(
-    z.isMiniBoss || z.miniBoss || z.isMini || z.mini ||
-    z.rank === 'miniBoss' || z.rank === 'mini_boss' ||
-    z.type === 'miniBoss' || z.type === 'mini_boss' ||
-    z.level === 99 // bạn đang dùng Lv99 cho mini boss
-  );
-  const isElite   = !!(z.isElite || z.elite || z.rank === 'elite' || z.tier === 'elite');
-  return { isBigBoss, isBoss, isMiniBoss, isElite };
-}
-  // Hiển thị thông tin zombie
-function showZombieInfo(z, clientX, clientY){
-  const el = ensurePopup();
-  const name = z.style || z.name || 'Zombie';
-  const lv   = z.level ?? 1;
+    const hp    = Number(z.hp ?? z.health ?? 0);
+    const maxHp = getMaxHP(z);
+    const pct   = maxHp > 0 ? Math.round(Math.min(1, hp / maxHp) * 100) : 0;
 
-  const hp    = Number(z.hp ?? z.health ?? 0);
-  const maxHp = getMaxHP(z);
-  const pct   = maxHp > 0 ? Math.round(Math.min(1, hp / maxHp) * 100) : 0;
+    // Loại + kỹ năng
+    const { typeKey, typeLabel } = getType(z);
+    const skills = getSkillsFor(z, typeKey);
 
-  const exp   = z.exp ?? z.expDrop ?? (5 + lv * 2);
-  const { isBigBoss, isBoss, isMiniBoss, isElite } = classifyZombie(z);
+    // ✅ EXP đúng số sẽ nhận nếu giết hiện tại
+    const baseExp = calcExpBase(z);
 
-  const tag = (t)=>`<span style="display:inline-block;padding:1px 6px;border-radius:999px;border:1px solid rgba(255,255,255,.15);font-size:11px;margin-right:6px">${t}</span>`;
-  const tags = [
-    isBigBoss && 'Big Boss',
-    isBoss    && 'Boss',
-    isMiniBoss&& 'Mini Boss',
-    isElite   && 'Tinh anh'
-  ].filter(Boolean).map(tag).join(' ');
+    el.innerHTML = `
+      <h4 style="margin:0 0 6px;font-size:14px;color:#d9b8ff">${name} <span style="opacity:.8">Lv${lv}</span></h4>
+      <div style="margin-top:2px">HP: ${fmtAbbr(hp)} / ${fmtAbbr(maxHp)} (${pct}%)</div>
+      <div style="margin-top:2px">EXP: ${fmtAbbr(baseExp)} <span style="opacity:.8">(±10%)</span></div>
+      <div style="margin-top:6px">Zombie: ${tagHTML(typeLabel)}</div>
+      <div style="margin-top:6px">Kỹ năng: ${
+        (skills && skills.length) ? skills.map(s=>tagHTML(s)).join(' ') : '<span style="opacity:.8">—</span>'
+      }</div>
+      ${z.desc || z.description ? `<div style="margin-top:6px;opacity:.8">${z.desc || z.description}</div>` : ''}
+    `;
+    el.style.display='block';
+    placePopup(clientX, clientY);
+  }
 
-  const skills = Array.isArray(z.skills) ? z.skills : (z.skillNames || []);
-
-  el.innerHTML = `
-    <h4 style="margin:0 0 6px;font-size:14px;color:#d9b8ff">${name} <span style="opacity:.8">Lv${lv}</span></h4>
-    <div style="margin-top:2px">HP: ${fmtAbbr(hp)} / ${fmtAbbr(maxHp)} (${pct}%)</div>
-    <div style="margin-top:2px">Exp: ${fmtAbbr(exp)}</div>
-    ${tags ? `<div style="margin-top:6px">${tags}</div>` : ''}
-    <div style="margin-top:6px">Kỹ năng: ${
-      (skills && skills.length) ? skills.map(s=>tag(s)).join(' ') : '<span style="opacity:.8">—</span>'
-    }</div>
-    ${z.desc || z.description ? `<div style="margin-top:6px;opacity:.8">${z.desc || z.description}</div>` : ''}
-  `;
-  el.style.display='block';
-  placePopup(clientX, clientY);
-}
-
-  // 5) Hover logic: rê chuột ⇒ hiện popup, rời ⇒ ẩn
-  let hovered=null, lastShown=null, lastShowTs=0;
+  // Hover logic (re-render khi đổi wave)
+  let lastShown=null, lastShowTs=0, lastShownWave = (typeof wave !== 'undefined' ? wave : (globalThis.wave|0)) || 1;
 
   canvas.addEventListener('mousemove', (e)=>{
     const {x,y} = toCanvasSpace(e.clientX, e.clientY);
     const cur = pickZombieAt(x, y);
-    hovered = cur;
     canvas.style.cursor = cur ? 'pointer' : 'default';
-
     if (!cur){ hidePopup(); lastShown=null; return; }
 
-    const now = performance.now();
+    const ts = performance.now();
+    const wNow = (typeof wave !== 'undefined' ? wave : (globalThis.wave|0)) || 1;
 
-    // Cùng zombie ⇒ chỉ di chuyển popup cho mượt (không re-render liên tục)
-    if (cur === lastShown) { placePopup(e.clientX, e.clientY); return; }
-
-    // Zombie khác ⇒ render lại (throttle nhẹ)
-    if (now - lastShowTs < 50) { placePopup(e.clientX, e.clientY); return; }
-    lastShown = cur; lastShowTs = now;
+    if (cur === lastShown && wNow === lastShownWave) { placePopup(e.clientX, e.clientY); return; }
+    if (ts - lastShowTs < 50) { placePopup(e.clientX, e.clientY); return; }
+    lastShown = cur; lastShowTs = ts; lastShownWave = wNow;
     showZombieInfo(cur, e.clientX, e.clientY);
   }, true);
 
-  canvas.addEventListener('mouseleave', ()=>{
-    hovered=null; lastShown=null; hidePopup(); canvas.style.cursor='default';
-  }, true);
-
+  canvas.addEventListener('mouseleave', ()=>{ lastShown=null; hidePopup(); canvas.style.cursor='default'; }, true);
   console.info('[Inspector] Hover popup đã gắn vào', canvas);
 })();
 
@@ -5009,6 +5037,7 @@ function sysUpdateWaveAndBoss(now) {
 
   if (remaining <= 0) {
     wave++; pendingWave = wave; if (typeof showUpgradePopup === "function") showUpgradePopup();
+    globalThis.wave = wave;  // Đồng bộ wave ra global để mọi nơi (kể cả popup hover) đọc được ngay
     if (wave === 5) { bigBossRespawnTimer = 0; lastBigBossTimerUpdate = performance.now(); }
     lastWaveTime = now; if (typeof updateWaveUI === "function") updateWaveUI();
   }
