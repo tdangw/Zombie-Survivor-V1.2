@@ -152,4 +152,37 @@ Giảm check distance() khi list zombie quá nhiều Dùng broad phase: vùng ca
   Thay đổi hệ thống tính exp
 - Sắp làm: thêm đạn đặc biệt vào shop sẽ mua bằng xu
 - Thêm vật phẩm mới: Potion > tăng nhiều hp
--
+
+---
+
+> thêm boss có 1% sinh ra: done
+>
+> > sắp làm:
+> > thêm trang bị cho đủ 16 ô: done
+> > thêm logic ghép các sợi lông thành cánh
+> > safe zone tự hủy và hồi phục: done
+> > thêm bản tin : done
+
+- Thêm giáp cho zombie: done
+- Thêm % att % giáp
+
+  === thả đúng 32 món
+  (() => {
+  if (!window.EquipmentDropAPI?.forceDropAt) { console.warn('Thiếu EquipmentDropAPI.forceDropAt'); return; }
+  // ĐIỀN LIST metaIndex đúng bạn đã tra được ở bước B1:
+  const IDX = [
+  /* ví dụ */ 142,143, 151,152, 161,162, 170,171,
+  182,183, 190,191, 205,206, 214,215,
+  223,224, 231,232, 241,242, 253,254,
+  261,262, 271,272, 281,282,
+  ];
+  const px = player?.x ?? 0, py = player?.y ?? 0;
+  const R = 140, step = (Math.PI*2)/IDX.length;
+  const tier = 8, rarity = 'legendary';
+  let ok=0,fail=0;
+  for (let i=0;i<IDX.length;i++){
+  const ang = i*step, x=px+Math.cos(ang)*R, y=py+Math.sin(ang)*R;
+  try { EquipmentDropAPI.forceDropAt(x,y,{tier,rarity,metaIndex:IDX[i]}); ok++; } catch(e){ console.warn(e); fail++; }
+  }
+  console.log(`✅ Đã thả chính xác ${ok}/${IDX.length} món theo metaIndex đã dò.`);
+  })();

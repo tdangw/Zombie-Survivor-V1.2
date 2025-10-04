@@ -1,20 +1,161 @@
 /* eslint-env browser */
+/* eslint no-empty: ["error", { "allowEmptyCatch": true }] */
 /* global player, playerUpgrades, updateStatsOverlay, baseCritRate:writable, showWarning, updateUI */
 // character_panel.js
 /** ================== CONFIG / STATE ================== */
 // ⚙️ FUSION CONFIG (có thể chỉnh cho cân bằng)
 const FUSION_COST_BY_COUNT = { 2: 2, 3: 3, 4: 5, 5: 8, 6: 12, 7: 17, 8: 23 }; // phí cơ bản theo số món
-const FUSION_TIER_MULT = 1; // phí * bậc thấp nhất (minTier)
+const FUSION_TIER_MULT = 5; // phí * bậc thấp nhất (minTier)
 const FUSION_REFUND_RATE = 0.5; // hoàn 50% phí khi thất bại
 // Thời gian hiển thị trạng thái tái chế trước khi show kết quả
 const FUSION_PROCESS_MS = 3000; // Thời gian tái chế (ms)
 
 const CHAR_POINTS_PER_LEVEL = 3; // +3 điểm mỗi khi lên cấp
 window.CHAR_POINTS_PER_LEVEL = CHAR_POINTS_PER_LEVEL; // export để dùng nơi khác
-const CharacterPanelState = {
-  baseline: null, // { damageBoost, baseCritRate, maxHearts }
-  spent: { damage: 0, crit: 0, hp: 0, stamina: 0 }, // số điểm đã cộng theo từng stat
+// Luôn dùng đúng 1 object chung trên window để các nơi cùng tham chiếu
+window.CharacterPanelState = window.CharacterPanelState || {
+  baseline: null,
+  spent: { damage: 0, crit: 0, hp: 0, stamina: 0, armor: 0 },
 };
+// Alias nội bộ trỏ tới đúng object trên window (KHÔNG tạo object mới)
+const CharacterPanelState = window.CharacterPanelState;
+// Roman numerals dùng chung cho bậc T1..T10
+// Dùng 1 bản duy nhất, đóng băng để tránh bị sửa ngoài ý muốn
+window.ROMAN =
+  window.ROMAN ||
+  Object.freeze(['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X']);
+
+/* ================== FUSION RARITY (tách khỏi tier) ================== */
+// [1.1] Thứ tự rarity dùng chung
+const FUSION_RARITY_ORDER = ['common', 'rare', 'epic', 'legendary', 'relic'];
+
+// [1.2] Sàn (floor) xác suất theo số món ghép (2..8)
+// → đảm bảo “8 common vẫn có chút cơ hội ra rare/epic rất nhỏ”
+const FUSION_RARITY_FLOOR_BY_COUNT = {
+  2: [0.0, 0.02, 0.004, 0.001, 0.0], // [C,R,E,L,RC]
+  3: [0.0, 0.03, 0.006, 0.0015, 0.0],
+  4: [0.0, 0.04, 0.008, 0.002, 0.0005],
+  5: [0.0, 0.05, 0.012, 0.003, 0.0008],
+  6: [0.0, 0.06, 0.016, 0.004, 0.001],
+  7: [0.0, 0.07, 0.02, 0.005, 0.0012],
+  8: [0.0, 0.08, 0.025, 0.006, 0.0015],
+};
+
+// [1.3] “Phiếu bầu” theo rarity nguyên liệu (trọng số)
+const FUSION_RARITY_VOTE = {
+  common: [1.0, 0.05, 0.0, 0.0, 0.0],
+  rare: [0.7, 1.0, 0.08, 0.0, 0.0],
+  epic: [0.3, 0.6, 1.0, 0.12, 0.01],
+  legendary: [0.1, 0.3, 0.8, 1.0, 0.12],
+  relic: [0.05, 0.2, 0.5, 0.8, 1.0],
+};
+
+// [1.4] “Đẩy phân phối lên trên” theo minTier (đồ nguyên liệu càng cao → thiên về rarity cao)
+const FUSION_RARITY_SHIFT_BY_MIN_TIER = {
+  6: [0.04, 0.03, 0.015, 0.005], // C->R, R->E, E->L, L->RC
+  8: [0.08, 0.05, 0.025, 0.01],
+  9: [0.12, 0.07, 0.035, 0.015],
+};
+
+// [1.5] Helper nhỏ (tối ưu cho mảng 5 phần tử, không sinh rác)
+function pickByWeights5(w) {
+  // w: [c,r,e,l,rc]
+  let s = 0;
+  for (let i = 0; i < 5; i++) s += w[i];
+  if (s <= 0) return 0;
+  let r = Math.random() * s;
+  for (let i = 0; i < 5; i++) {
+    r -= w[i];
+    if (r <= 0) return i;
+  }
+  return 4;
+}
+function normalize5(w) {
+  let s = 0;
+  for (let i = 0; i < 5; i++) s += w[i];
+  if (s > 0) for (let i = 0; i < 5; i++) w[i] /= s;
+  return w;
+}
+function shiftUp5(dist, sh) {
+  // dist: [C,R,E,L,RC], sh: [c2r,r2e,e2l,l2rc]
+  // C->R
+  let m = Math.min(sh[0], dist[0]);
+  dist[0] -= m;
+  dist[1] += m;
+  // R->E
+  m = Math.min(sh[1], dist[1]);
+  dist[1] -= m;
+  dist[2] += m;
+  // E->L
+  m = Math.min(sh[2], dist[2]);
+  dist[2] -= m;
+  dist[3] += m;
+  // L->RC
+  m = Math.min(sh[3], dist[3]);
+  dist[3] -= m;
+  dist[4] += m;
+  return normalize5(dist);
+}
+
+// [1.6] Lấy rarity của 1 nguyên liệu (fallback theo tier nếu item chưa có rarity)
+function getMatRarity(it) {
+  const tier = clamp(Number(it?.tier || 1), 1, 10);
+  return it?.rarity || rarityOfTier(tier) || 'common';
+}
+
+// [1.7] Tính phân phối rarity cho GHÉP hiện tại (dựa trên nguyên liệu)
+function computeFusionRarityDist(mats, n, minTier) {
+  const k = Math.max(2, Math.min(8, n));
+  const floor = FUSION_RARITY_FLOOR_BY_COUNT[k] || [0, 0, 0, 0, 0];
+
+  // tổng phiếu
+  const w = [floor[0], floor[1], floor[2], floor[3], floor[4]];
+  for (let i = 0; i < mats.length; i++) {
+    const rar = getMatRarity(mats[i]);
+    const v = FUSION_RARITY_VOTE[rar] || FUSION_RARITY_VOTE.common;
+    // cộng trọng số (5 phần tử)
+    w[0] += v[0];
+    w[1] += v[1];
+    w[2] += v[2];
+    w[3] += v[3];
+    w[4] += v[4];
+  }
+  normalize5(w);
+
+  // đẩy lên theo minTier (lấy ngưỡng cao nhất thỏa điều kiện)
+  let sh = null;
+  if (minTier >= 9) sh = FUSION_RARITY_SHIFT_BY_MIN_TIER[9];
+  else if (minTier >= 8) sh = FUSION_RARITY_SHIFT_BY_MIN_TIER[8];
+  else if (minTier >= 6) sh = FUSION_RARITY_SHIFT_BY_MIN_TIER[6];
+  if (sh) shiftUp5(w, sh);
+
+  return w; // [C,R,E,L,RC]
+}
+
+// [1.8] Roll rarity từ phân phối
+function rollFusionRarity(mats, n, minTier) {
+  const dist = computeFusionRarityDist(mats, n, minTier);
+  const idx = pickByWeights5(dist);
+  return FUSION_RARITY_ORDER[idx] || 'common';
+}
+
+// [1.9] Gợi ý ngắn gọn cho UI (chỉ 3 mức cao nhất về %)
+function formatRarityHint(dist) {
+  // dist: [C,R,E,L,RC]
+  const short = ['C', 'R', 'E', 'L', 'Rc'];
+  const arr = [
+    { k: 0, p: dist[0] },
+    { k: 1, p: dist[1] },
+    { k: 2, p: dist[2] },
+    { k: 3, p: dist[3] },
+    { k: 4, p: dist[4] },
+  ];
+  arr.sort((a, b) => b.p - a.p);
+  const take = arr.slice(0, 3);
+  for (let i = 0; i < take.length; i++)
+    take[i].txt = `${short[take[i].k]}~${Math.round(take[i].p * 100)}%`;
+  return take.map((x) => x.txt).join(' / ');
+}
 
 // Slots cơ bản (tùy bạn đổi tên/thiết kế icon sau)
 // Slots mở rộng 12 ô
@@ -22,15 +163,19 @@ const EQUIP_SLOTS = [
   'Vũ khí 1',
   'Vũ khí 2',
   'Giáp',
+  'Quần',
   'Mũ',
   'Găng',
   'Giày',
+  'Thắt lưng',
   'Nhẫn Trái',
   'Nhẫn Phải',
+  'Khiên',
+  'Phụ kiện',
   'Dây chuyền',
   'Bông tai',
   'Mắt kính',
-  'Khiên',
+  'Cánh',
 ];
 
 // Trạng thái trang bị & tồn kho
@@ -51,6 +196,8 @@ const Equip = {
   fusion: {
     mats: Array(8).fill(null), // 8 ô nguyên liệu
     result: null, // kết quả ở ô giữa
+    isProcessing: false, // NEW: chặn spam khi đang quay kết quả
+    pity: 0, // NEW: +1% mỗi lần fail, reset về 0 khi thành công
   },
 };
 window.Equip = Equip;
@@ -63,16 +210,30 @@ const SLOT_ALIASES = {
 // Gom nhóm loại: "Vũ khí 1/2" → "Vũ khí", "Nhẫn Trái/Phải" → "Nhẫn"
 function getItemGroup(it) {
   if (!it) return null;
-  const aliases = {
-    'Vũ khí': ['Vũ khí 1', 'Vũ khí 2'],
-    Nhẫn: ['Nhẫn Trái', 'Nhẫn Phải'],
-  };
-  if (it.slot && aliases[it.slot]) return it.slot; // slot là nhóm
+
+  // nhóm có 2 ô
+  const ALIAS = SLOT_ALIASES;
+
+  // a) nếu item đã ghi slot là tên nhóm → trả luôn
+  if (it.slot && ALIAS[it.slot]) return it.slot;
+
+  // b) nếu item có slot cụ thể → map sang nhóm
   if (it.slot) {
-    for (const [g, arr] of Object.entries(aliases))
+    for (const [g, arr] of Object.entries(ALIAS)) {
       if (arr.includes(it.slot)) return g;
+    }
+    // là slot đơn (Giáp, Mũ, …)
+    return it.slot;
   }
-  return it.slot || null;
+
+  // c) nếu chỉ có slotOptions → suy ra nhóm từ options
+  if (Array.isArray(it.slotOptions)) {
+    for (const [g, arr] of Object.entries(ALIAS)) {
+      if (it.slotOptions.some((s) => arr.includes(s))) return g;
+    }
+  }
+
+  return null;
 }
 
 // rarity theo bậc (đã dùng trong panel UI)
@@ -143,8 +304,25 @@ function autoPickTargetSlot(item) {
 /** === EQUIP AGGREGATION + CRIT HOOKS (CORE LOGIC) === */
 (function equipCritIntegration() {
   function recalcEquipStats() {
+    // Lấy đúng tham chiếu player / playerUpgrades dù có/không gắn lên window
+    const P = typeof player !== 'undefined' ? player : window.player ?? null;
+    const PU =
+      typeof playerUpgrades !== 'undefined'
+        ? playerUpgrades
+        : (window.playerUpgrades = window.playerUpgrades || {});
+
+    if (!P) {
+      // Không có player => chỉ lưu cache/applied để lần sau áp dụng
+      Equip.applied = Equip.applied || {};
+      window.EquipStatCache = window.EquipStatCache || {};
+      return;
+    }
+
+    // 1) Tổng hợp bonus từ toàn bộ trang bị (kể cả affix/extra)
     const slots =
-      window.Equip && window.Equip.slots ? Object.values(Equip.slots) : [];
+      window.Equip && window.Equip.slots
+        ? Object.values(window.Equip.slots)
+        : [];
     const sums = {
       damageBoost: 0,
       hearts: 0,
@@ -153,68 +331,137 @@ function autoPickTargetSlot(item) {
       moveSpeed: 0,
       critRate: 0,
       critDmg: 0,
+      hpRegen: 0,
+      spRegen: 0,
+      stamina: 0,
+      iceArrow: 0,
+      lineBulletCount: 0,
     };
     const addB = (b) => {
       if (!b) return;
-      for (const k in b) {
-        sums[k] = (sums[k] || 0) + Number(b[k] || 0);
-      }
+      for (const k in b) sums[k] = (sums[k] || 0) + Number(b[k] || 0);
     };
-    slots.forEach((it) => {
-      if (!it) return;
+    for (let i = 0; i < slots.length; i++) {
+      const it = slots[i];
+      if (!it) continue;
       addB(it.bonuses);
       addB(it.extraBonuses || it.extra || it.randBonuses);
-    });
-
+    }
     window.EquipStatCache = sums;
 
-    if (window.player) {
-      player.equipDamageBoost = sums.damageBoost || 0;
-      player.equipCritRate = sums.critRate || 0;
-      player.equipCritDmg = sums.critDmg || 0;
-      player.equipBulletSpeed = sums.bulletSpeed || 0;
-      player.equipMoveSpeed = sums.moveSpeed || 0;
-    }
+    // 2) Lấy base động = current - prevApplied
+    const prev = Equip.applied || {};
+    const baseArmor = Number(P.armor || 0) - Number(prev.armor || 0);
+    const baseSpeed = Number(P.speed || 0) - Number(prev.moveSpeed || 0);
+    const baseDmgBoost =
+      Number(PU.damageBoost || 0) - Number(prev.damageBoost || 0);
+    const baseBulletSpeed =
+      Number(PU.bulletSpeed || 0) - Number(prev.bulletSpeed || 0);
+    const baseIceArrow = Number(PU.iceArrow || 1) - Number(prev.iceArrow || 0);
+    const baseLineBulletCount =
+      Number(PU.lineBulletCount || 1) - Number(prev.lineBulletCount || 0);
+
+    const baseMaxH = Number(P.maxHearts || 10) - Number(prev.hearts || 0);
+    const baseStaMax = Number(P.staminaMax || 10) - Number(prev.stamina || 0);
+
+    // 3) Gán giá trị tuyệt đối = base + sums
+    P.armor = Math.max(0, baseArmor + (sums.armor || 0));
+    P.speed = Math.max(0, baseSpeed + (sums.moveSpeed || 0));
+
+    PU.damageBoost = baseDmgBoost + (sums.damageBoost || 0);
+    PU.bulletSpeed = baseBulletSpeed + (sums.bulletSpeed || 0);
+    PU.iceArrow = baseIceArrow + (sums.iceArrow || 0);
+    PU.lineBulletCount = baseLineBulletCount + (sums.lineBulletCount || 0);
+
+    // 4) HP tối đa (trần) + clamp/fill
+    const oldMaxH = baseMaxH + Number(prev.hearts || 0);
+    const newMaxH = baseMaxH + (sums.hearts || 0);
+    P.maxHearts = newMaxH;
+    const curH = Number(P.hearts || 0);
+    P.hearts =
+      newMaxH > oldMaxH
+        ? Math.round(curH) >= Math.round(oldMaxH)
+          ? newMaxH
+          : Math.min(curH, newMaxH)
+        : Math.min(curH, newMaxH);
+
+    // 5) Stamina tối đa (SP)
+    const oldMaxS = baseStaMax + Number(prev.stamina || 0);
+    const newMaxS = baseStaMax + (sums.stamina || 0);
+    P.staminaMax = newMaxS;
+    const curS = Number(P.stamina || 0);
+    P.stamina =
+      newMaxS > oldMaxS
+        ? Math.round(curS) >= Math.round(oldMaxS)
+          ? newMaxS
+          : Math.min(curS, newMaxS)
+        : Math.min(curS, newMaxS);
+
+    // 6) Thông tin cho UI
+    P.equipCritRate = sums.critRate || 0;
+    P.equipCritDmg = sums.critDmg || 0;
+    P.equipBulletSpeed = sums.bulletSpeed || 0;
+    P.equipMoveSpeed = sums.moveSpeed || 0;
+    P.equipHpRegen = sums.hpRegen || 0;
+    P.equipSpRegen = sums.spRegen || 0;
+    P.equipStaminaMaxBonus = sums.stamina || 0;
+
+    // 7) Lưu lại tổng đã áp dụng cho vòng sau
+    Equip.applied = {
+      damageBoost: sums.damageBoost || 0,
+      bulletSpeed: sums.bulletSpeed || 0,
+      moveSpeed: sums.moveSpeed || 0,
+      hearts: sums.hearts || 0,
+      armor: sums.armor || 0,
+      stamina: sums.stamina || 0,
+      iceArrow: sums.iceArrow || 0,
+      lineBulletCount: sums.lineBulletCount || 0,
+    };
+
+    updateStatsOverlay?.();
   }
   window.recalcEquipStats = recalcEquipStats;
 
-  // Hook crit rate / crit dmg multiplier
+  // Hook crit rate / crit dmg (đọc từ EquipStatCache do recalcEquipStats tính)
   (function hookCrit() {
-    const cap =
-      typeof window.CRIT_RATE_CAP === 'number' ? window.CRIT_RATE_CAP : 0.7;
+    const rateCap =
+      typeof window.CRIT_RATE_CAP === 'number' ? window.CRIT_RATE_CAP : 0.75;
+    const dmgCap =
+      typeof window.CRIT_DMG_CAP === 'number' ? window.CRIT_DMG_CAP : 9.0;
 
-    const origGetRate =
-      typeof window.getCritRate === 'function'
-        ? window.getCritRate
-        : function () {
-            return window.baseCritRate || 0;
-          };
+    // 1) Wrap getCritRate(now)
+    if (
+      typeof window.getCritRate === 'function' &&
+      !window.getCritRate.__equipWrapped
+    ) {
+      const origGetRate = window.getCritRate;
+      window.getCritRate = function (now) {
+        const base = Number(origGetRate(now) || 0); // base + buff thời gian
+        const eq = Number(
+          (window.EquipStatCache && window.EquipStatCache.critRate) || 0
+        );
+        const total = base + eq;
+        return total > rateCap ? rateCap : total < 0 ? 0 : total;
+      };
+      window.getCritRate.__equipWrapped = true;
+    }
 
-    window.getCritRate = function () {
-      const base = Number(origGetRate() || 0);
-      const eq = Number(
-        (window.EquipStatCache && window.EquipStatCache.critRate) || 0
-      );
-      const total = base + eq;
-      return total > cap ? cap : total;
-    };
-
-    const origGetDmgMul =
-      typeof window.getCritDmgMultiplier === 'function'
-        ? window.getCritDmgMultiplier
-        : function () {
-            const basePlus =
-              typeof window.baseCritDmg === 'number' ? window.baseCritDmg : 0.5; // +50% → 1.5x
-            return 1 + basePlus;
-          };
-
-    window.getCritDmgMultiplier = function () {
-      const baseM = Number(origGetDmgMul() || 1);
-      const eqAdd = Number(
-        (window.EquipStatCache && window.EquipStatCache.critDmg) || 0
-      );
-      return baseM + eqAdd;
-    };
+    // 2) Wrap getCritDmg(now)  ← SỬA Ở ĐÂY (trước kia wrap nhầm Multiplier)
+    if (
+      typeof window.getCritDmg === 'function' &&
+      !window.getCritDmg.__equipWrapped
+    ) {
+      const origGetDmg = window.getCritDmg;
+      window.getCritDmg = function (now) {
+        const base = Number(origGetDmg(now) || 0); // ví dụ 0.5 nghĩa là +50% → 1.5x
+        const eq = Number(
+          (window.EquipStatCache && window.EquipStatCache.critDmg) || 0
+        );
+        const total = base + eq;
+        return total > dmgCap ? dmgCap : total < 0 ? 0 : total;
+      };
+      window.getCritDmg.__equipWrapped = true;
+    }
   })();
 
   // Tự động re-calc khi kho/trang bị thay đổi
@@ -262,6 +509,19 @@ function autoPickTargetSlot(item) {
 
 /** ================== INITIAL INVENTORY (STARTER GEAR) ================== */
 (function seedInitialInventory() {
+  // ⛔ BỎ QUA nếu đã có Save (Chơi tiếp) để không bơm đồ mặc định
+  try {
+    const raw = localStorage.getItem('zombieSurvivorSave');
+    if (raw) {
+      const s = JSON.parse(raw);
+      const eq = s && s.Equip;
+      const hasAny =
+        (eq && Array.isArray(eq.inventory) && eq.inventory.length > 0) ||
+        (eq && eq.slots && Object.values(eq.slots).some(Boolean));
+      if (hasAny) return; // đã có dữ liệu trang bị → không seed
+    }
+  } catch {}
+
   if (seedInitialInventory.done) return;
   seedInitialInventory.done = true;
 
@@ -278,15 +538,15 @@ function autoPickTargetSlot(item) {
       icon: '🗡️',
       slot: 'Vũ khí',
       bonuses: { damageBoost: 1 },
-      desc: 'Vũ khí nhẹ đã cũ, tăng nhẹ sát thương cơ bản (+1).',
+      desc: 'Vũ khí nhẹ đã cũ, tăng nhẹ sát thương cơ bản.',
     },
     {
       id: 'starter_armor',
       name: 'Giáp da cũ',
       icon: '🦺',
       slot: 'Giáp',
-      bonuses: { hearts: 2, armor: 1 },
-      desc: 'Giáp mỏng giúp sống sót tốt hơn (+2 HP, +1 Giáp).',
+      bonuses: { hearts: 1, armor: 1 },
+      desc: 'Giáp mỏng giúp sống sót tốt hơn.',
     },
     {
       id: 'starter_helmet',
@@ -294,7 +554,7 @@ function autoPickTargetSlot(item) {
       icon: '🧢',
       slot: 'Mũ',
       bonuses: { hearts: 1, armor: 1 },
-      desc: 'Mũ đơn giản, tăng một chút thể lực (+1 HP, +1 Giáp).',
+      desc: 'Mũ đơn giản, tăng một chút thể lực.',
     },
     {
       id: 'starter_gloves',
@@ -318,7 +578,7 @@ function autoPickTargetSlot(item) {
       icon: '💍',
       slot: 'Nhẫn',
       bonuses: { damageBoost: 1 },
-      desc: 'Vòng đồng khắc runic, tăng nhẹ sát thương (+1).',
+      desc: 'Vòng đồng khắc runic, tăng nhẹ sát thương.',
     },
     {
       id: 'starter_necklace',
@@ -334,46 +594,103 @@ function autoPickTargetSlot(item) {
       icon: '🛡️',
       slot: 'Khiên',
       bonuses: { hearts: 1, armor: 1 },
-      desc: 'Tấm khiên tạm bợ, đỡ được vài đòn (+1 HP, +1 Giáp).',
+      desc: 'Tấm khiên tạm bợ, đỡ được vài đòn.',
+    },
+    {
+      id: 'starter_earring',
+      name: 'Bông tai',
+      icon: '👂',
+      slot: 'Bông tai',
+      bonuses: { critRate: 0.05, critDmg: 0.1 },
+      desc: 'Một đôi bông tai được chế tác tinh xảo, giúp tăng cơ hội và sát thương chí mạng.',
     },
   ];
 
-  BASIC_GEAR.forEach(addOnce);
+  // Hàm reset kho + slot trang bị về mặc định rồi seed lại starter gear
+  window.resetStarterEquip = function () {
+    // reset structure
+    Equip.slots = {};
+    (Array.isArray(window.EQUIP_SLOTS) ? window.EQUIP_SLOTS : []).forEach(
+      (s) => {
+        Equip.slots[s] = null;
+      }
+    );
+    Equip.inventory = [];
+    Equip.ironDust = 0;
+    // reset tổng đã áp dụng từ trang bị (rất quan trọng để tránh trừ nhầm)
+    Equip.applied = {
+      damageBoost: 0,
+      bulletSpeed: 0,
+      moveSpeed: 0,
+      hearts: 0,
+      armor: 0,
+      stamina: 0,
+      iceArrow: 0,
+      lineBulletCount: 0,
+    };
 
-  // Hộp quà cấp 1
-  addOnce({
-    id: 'box_lvl1_starter',
-    name: 'Hộp quà cấp 1',
-    icon: '🎁',
-    type: 'box',
-    desc: 'Hộp khởi đầu cho tân thủ: mở nhận 100 xu + 2 bình hồi cơ bản.',
-    contents: {
-      coins: 100,
-      consumables: [
-        {
-          id: 'potion_hp_s',
-          name: 'Bình máu nhỏ (+5)',
-          icon: '🧪',
-          type: 'consumable',
-          effect: { hearts: 5 },
-          desc: 'Dùng để hồi ngay +5 HP.',
-        },
-        {
-          id: 'potion_mana_s',
-          name: 'Bình mana nhỏ (+20)',
-          icon: '🔷',
-          type: 'consumable',
-          effect: { mana: 20 },
-          desc: 'Dùng để hồi ngay +20 Mana.',
-        },
-      ],
-      note: 'Mở để nhận 100 xu + 2 bình hồi cơ bản',
-    },
-  });
+    // seed starter gear
+    BASIC_GEAR.forEach(addOnce);
+
+    // Hộp quà cấp 1
+    addOnce({
+      id: 'box_lvl1_starter',
+      name: 'Hộp quà tân thủ',
+      icon: '🎁',
+      type: 'box',
+      desc: 'Hộp quà khởi đầu cho tân thủ: mở nhận 10 xu + 2 bình hồi cơ bản.',
+      contents: {
+        coins: 10,
+        consumables: [
+          {
+            id: 'potion_hp_s',
+            name: 'Bình máu nhỏ (+10)',
+            icon: '🧪',
+            type: 'consumable',
+            effect: { hearts: 10 },
+            desc: 'Dùng để hồi ngay +10 HP.',
+          },
+          {
+            id: 'potion_mana_s',
+            name: 'Bình mana nhỏ (+10)',
+            icon: '🔷',
+            type: 'consumable',
+            effect: { mana: 10 },
+            desc: 'Dùng để hồi ngay +10 Mana.',
+          },
+        ],
+        note: 'Mở để nhận 10 xu + 2 bình hồi cơ bản',
+      },
+    });
+
+    applyEquipmentBonuses();
+    window.CharacterPanel?.refresh?.();
+  };
+
+  // Seed 1 lần khi trang mới load (game mới) — chỉ khi túi đang trống
+  if (!Array.isArray(Equip.inventory) || Equip.inventory.length === 0) {
+    window.resetStarterEquip();
+  }
 })();
 
 /** ================== STAT DEFINITIONS ================== */
 const STAT_DEFS = [
+  {
+    key: 'armor',
+    name: '🛡️ Giáp',
+    read: () => Number(player.armor || 0),
+    add: () => {
+      if (!player.statPoints || player.statPoints <= 0) return;
+      player.armor = Number(player.armor || 0) + 1; // +1 Giáp mỗi điểm
+      player.statPoints -= 1;
+      CharacterPanelState.spent.armor =
+        (CharacterPanelState.spent.armor || 0) + 1;
+      updateStatsOverlay?.();
+      window.CharacterPanel?.refresh();
+    },
+    stepText: '1',
+    enabled: () => true,
+  },
   {
     key: 'damage',
     name: '💥 Sát thương',
@@ -451,51 +768,14 @@ const STAT_DEFS = [
 
 /** ================== APPLY EQUIPMENT ================== */
 function applyEquipmentBonuses() {
-  const a = Equip.applied;
-  if (a.armor) player.armor = (player.armor || 0) - a.armor;
-  if (a.damageBoost)
-    playerUpgrades.damageBoost =
-      (playerUpgrades.damageBoost || 0) - a.damageBoost;
-  if (a.bulletSpeed)
-    playerUpgrades.bulletSpeed =
-      (playerUpgrades.bulletSpeed || 0) - a.bulletSpeed;
-  if (a.moveSpeed) player.speed = (player.speed || 0) - a.moveSpeed;
-  if (a.hearts) player.hearts = Math.max(0, (player.hearts || 0) - a.hearts);
-  if (a.iceArrow)
-    playerUpgrades.iceArrow = (playerUpgrades.iceArrow || 1) - a.iceArrow;
-  if (a.lineBulletCount)
-    playerUpgrades.lineBulletCount =
-      (playerUpgrades.lineBulletCount || 1) - a.lineBulletCount;
-
-  const sum = {
-    damageBoost: 0,
-    bulletSpeed: 0,
-    moveSpeed: 0,
-    hearts: 0,
-    armor: 0,
-    iceArrow: 0,
-    lineBulletCount: 0,
-  };
-  for (const slot of EQUIP_SLOTS) {
-    const it = Equip.slots[slot];
-    if (!it || !it.bonuses) continue;
-    for (const k in sum) sum[k] += it.bonuses[k] || 0;
+  // Giữ tương thích – dồn về 1 chỗ tính duy nhất
+  try {
+    window.recalcEquipStats?.();
+  } catch {
+    /* ignore */
   }
-
-  player.armor = (player.armor || 0) + sum.armor;
-  playerUpgrades.damageBoost =
-    (playerUpgrades.damageBoost || 0) + sum.damageBoost;
-  playerUpgrades.bulletSpeed =
-    (playerUpgrades.bulletSpeed || 0) + sum.bulletSpeed;
-  player.speed = (player.speed || 0) + sum.moveSpeed;
-  player.hearts = (player.hearts || 0) + sum.hearts;
-  playerUpgrades.iceArrow = (playerUpgrades.iceArrow || 1) + sum.iceArrow;
-  playerUpgrades.lineBulletCount =
-    (playerUpgrades.lineBulletCount || 1) + sum.lineBulletCount;
-
-  Equip.applied = sum;
-  updateStatsOverlay?.();
 }
+
 /** Tháo tất cả trang bị đang mặc */
 function unequipAllItems() {
   let unequippedCount = 0;
@@ -514,51 +794,128 @@ function unequipAllItems() {
   if (unequippedCount > 0) {
     applyEquipmentBonuses();
     window.CharacterPanel?.refresh();
-    showWarning?.(`✅ Đã tháo ${unequippedCount} trang bị.`);
+    showWarning?.(`Đã tháo ${unequippedCount} trang bị.`);
   } else {
     showWarning?.('Không có trang bị nào để tháo.');
   }
 }
+// Popup xác nhận chi tiêu xu (tự hủy sau khi bấm)
+function showConfirmReset(cost, refund, onConfirm) {
+  const id = 'confirm-reset-points';
+  if (document.getElementById(id)) return; // tránh mở trùng
 
-/** Reset toàn bộ điểm thuộc tính đã cộng */
+  const wrap = document.createElement('div');
+  wrap.id = id;
+  wrap.style.position = 'fixed';
+  wrap.style.inset = '0';
+  wrap.style.background = 'rgba(0,0,0,.45)';
+  wrap.style.zIndex = '10001';
+  wrap.style.display = 'flex';
+  wrap.style.alignItems = 'center';
+  wrap.style.justifyContent = 'center';
+
+  const box = document.createElement('div');
+  box.style.minWidth = '22rem';
+  box.style.maxWidth = '80vw';
+  box.style.background = 'rgba(0, 20, 40, .95)';
+  box.style.border = '2px solid gold';
+  box.style.borderRadius = '.75rem';
+  box.style.padding = '1rem 1.25rem';
+  box.style.boxShadow = '0 0 14px rgba(255,215,0,.35)';
+  box.style.color = '#e0f7fa';
+  box.style.fontFamily = 'Segoe UI, sans-serif';
+  box.innerHTML = `
+    <div style="font-size:1.1rem;margin-bottom:.5rem;font-weight:700;color:#ffeb3b;">
+      Xác nhận reset điểm?
+    </div>
+    <div style="opacity:.95;margin-bottom:1rem;line-height:1.4">
+      Reset sẽ <b>tốn ${cost} xu</b> và hoàn lại <b>${refund}</b> điểm đã cộng.
+    </div>
+    <div style="display:flex;gap:.75rem;justify-content:flex-end">
+      <button id="${id}-cancel" style="padding:.5rem 1rem;background:#1a2b33;border:1px solid #294e5a;border-radius:.5rem;color:#e0f7fa">Huỷ</button>
+      <button id="${id}-ok" style="padding:.5rem 1rem;background:#330; border:1px solid #ff9800;border-radius:.5rem;color:#fff5cc;box-shadow:0 0 .5rem #ff980088">Đồng ý</button>
+    </div>
+  `;
+  wrap.appendChild(box);
+  document.body.appendChild(wrap);
+
+  const kill = () => wrap.remove();
+  document.getElementById(`${id}-cancel`).onclick = kill;
+  document.getElementById(`${id}-ok`).onclick = () => {
+    try {
+      onConfirm?.();
+    } finally {
+      kill();
+    }
+  };
+}
+
+/** Reset toàn bộ điểm thuộc tính đã cộng (tốn 10 xu + popup xác nhận) */
 function resetStatPoints() {
-  const spent = CharacterPanelState.spent || {};
+  const COST = 10;
+
+  // Lấy số điểm đã cộng từ state của panel
+  const spent = window.CharacterPanelState?.spent || {};
   const sDmg = spent.damage || 0;
   const sCrit = spent.crit || 0;
   const sHp = spent.hp || 0;
   const sSta = spent.stamina || 0;
+  const sArm = Number(spent.armor || 0);
 
-  // Rollback lại chỉ số gốc dựa trên số điểm đã cộng
-  if (sDmg)
-    playerUpgrades.damageBoost = Math.max(
-      0,
-      (playerUpgrades.damageBoost || 0) - sDmg
-    );
-  if (sCrit) baseCritRate = Math.max(0, (baseCritRate || 0) - sCrit * 0.01);
-  if (sHp) {
-    player.maxHearts = Math.max(10, (player.maxHearts || 10) - sHp * 5);
-    player.hearts = Math.min(player.hearts || 0, player.maxHearts);
-  }
-  if (sSta) {
-    player.staminaMax = Math.max(10, (player.staminaMax || 10) - sSta * 2);
-    player.stamina = Math.min(player.stamina || 0, player.staminaMax);
-  }
-
-  const refund = sDmg + sCrit + sHp + sSta;
+  const refund = sDmg + sCrit + sHp + sSta + sArm;
   if (refund <= 0) {
     showWarning?.('Chưa có điểm nào để reset!');
     return;
   }
+  if ((player.coins || 0) < COST) {
+    showWarning?.(`Cần ${COST} xu để reset điểm!`);
+    return;
+  }
 
-  player.statPoints = (player.statPoints || 0) + refund;
+  // Hiển thị popup xác nhận trước khi trừ xu & rollback
+  showConfirmReset(COST, refund, () => {
+    // 1) Trừ phí
+    player.coins = (player.coins || 0) - COST;
 
-  // Reset lại bộ đếm điểm đã cộng
-  CharacterPanelState.spent = { damage: 0, crit: 0, hp: 0, stamina: 0 };
+    // 2) Rollback các chỉ số về trước khi cộng
+    if (sDmg)
+      playerUpgrades.damageBoost = Math.max(
+        0,
+        (playerUpgrades.damageBoost || 0) - sDmg
+      );
+    if (sCrit) baseCritRate = Math.max(0, (baseCritRate || 0) - sCrit * 0.01);
+    if (sHp) {
+      player.maxHearts = Math.max(10, (player.maxHearts || 10) - sHp * 5);
+      player.hearts = Math.min(player.hearts || 0, player.maxHearts);
+    }
+    if (sSta) {
+      player.staminaMax = Math.max(10, (player.staminaMax || 10) - sSta * 2);
+      player.stamina = Math.min(player.stamina || 0, player.staminaMax);
+    }
+    if (sArm) {
+      player.armor = Math.max(0, Number(player.armor || 0) - sArm);
+    }
 
-  updateStatsOverlay?.();
-  window.CharacterPanel?.refresh?.();
-  showWarning?.(`↺ Đã reset và hoàn lại ${refund} điểm`);
+    // 3) Hoàn lại điểm
+    player.statPoints = (player.statPoints || 0) + refund;
+
+    // 4) Reset bộ đếm đã cộng (mutate đúng object đang dùng)
+    if (!window.CharacterPanelState)
+      window.CharacterPanelState = { baseline: null, spent: {} };
+    const sp =
+      window.CharacterPanelState.spent ||
+      (window.CharacterPanelState.spent = {});
+    sp.damage = sp.crit = sp.hp = sp.stamina = sp.armor = 0;
+
+    // 5) Cập nhật UI
+    updateUI?.();
+    updateStatsOverlay?.();
+    window.CharacterPanel?.refresh?.();
+
+    showWarning?.(`↺ Đã reset và hoàn lại ${refund} điểm (-${COST} xu)`);
+  });
 }
+
 /** ================== EQUIP OPS: unequip / discard equipped ================== */
 function unequipSlot(slot, sendToBag = true) {
   const current = Equip.slots[slot];
@@ -616,7 +973,7 @@ function equipItemById(id) {
 
   applyEquipmentBonuses();
   window.CharacterPanel?.refresh();
-  showWarning?.(`✅ Trang bị vào ô: ${targetSlot}`);
+  showWarning?.(`Trang bị vào ô: ${targetSlot}`);
 }
 function equipItemByIdToSlot(id, targetSlot) {
   const idx = Equip.inventory.findIndex((it) => String(it.id) === String(id));
@@ -636,8 +993,135 @@ function equipItemByIdToSlot(id, targetSlot) {
 
   applyEquipmentBonuses();
   window.CharacterPanel?.refresh();
-  showWarning?.(`✅ Trang bị vào ô: ${targetSlot}`);
+  showWarning?.(`Trang bị vào ô: ${targetSlot}`);
 }
+// ==== EQUIP PICKER: mở danh sách kho, lọc theo slot, chọn để mặc ngay ====
+function openEquipPickerForSlot(targetSlot) {
+  // Lấy toàn bộ item trong kho có thể mặc vào targetSlot
+  const list = (Equip.inventory || []).filter((it) => {
+    if (!isEquippable(it)) return false;
+    const allowed = getAllowedSlotsForItem(it) || [];
+    return allowed.includes(targetSlot);
+  });
+
+  UIPopup.open({
+    title: `Chọn trang bị cho: ${targetSlot}`,
+    html: true,
+    message:
+      `<div id="equipPicker" style="
+        display:grid;grid-template-columns:repeat(4,1fr);
+        gap:8px;max-height:calc(4 * 74px + 3 * 8px);
+        overflow-y:auto;padding-right:2px;">
+      </div>` +
+      (list.length === 0
+        ? `<div style="opacity:.8;margin-top:6px">Kho không có món nào phù hợp slot này.</div>`
+        : ''),
+    actions: [{ label: 'Đóng' }],
+  });
+
+  // Render các thẻ item như trong Kho/ghép để đồng bộ UX
+  setTimeout(() => {
+    const box = document.getElementById('equipPicker');
+    if (!box) return;
+    // Dùng cùng cấu hình như phần Ghép đồ
+    const ROMAN = window.ROMAN; // Bậc T1-T10
+    const rarityColor = window.RARITY_COLOR ||
+      (window.EquipmentDropAPI &&
+        window.EquipmentDropAPI.CONFIG &&
+        window.EquipmentDropAPI.CONFIG.RARITY_COLOR) || {
+        common: '#9e9e9e',
+        rare: '#2e7dff',
+        epic: '#7b3ff0',
+        legendary: '#f0b400',
+        relic: '#ff5252',
+      };
+
+    for (const it of list) {
+      const tier = Math.max(1, Math.min(10, Number(it.tier || 1)));
+      const rarity = String(it.rarity || rarityOfTier(tier)).toLowerCase();
+
+      // Card giống “Ghép đồ”: nền + viền theo rarity, badge góc phải
+      const card = document.createElement('div');
+      Object.assign(card.style, {
+        background: 'rgba(255,255,255,0.04)',
+        border: `1px solid ${rarityColor[rarity] || 'rgba(255,255,255,0.07)'}`,
+        borderRadius: '10px',
+        height: '74px',
+        display: 'grid',
+        gridTemplateRows: '1fr auto',
+        cursor: 'pointer',
+        position: 'relative',
+      });
+
+      const icon = document.createElement('div');
+      Object.assign(icon.style, {
+        display: 'grid',
+        placeItems: 'center',
+        fontSize: '20px',
+      });
+      icon.textContent = it.icon || '⬚';
+
+      const label = document.createElement('div');
+      Object.assign(label.style, {
+        fontSize: '11px',
+        textAlign: 'center',
+        opacity: 0.9,
+        padding: '4px 6px',
+      });
+      label.textContent = it.name || it.id;
+
+      const badge = document.createElement('div');
+      Object.assign(badge.style, {
+        position: 'absolute',
+        right: '4px',
+        top: '4px',
+        padding: '1px 6px',
+        borderRadius: '8px',
+        fontSize: '10px',
+        fontWeight: '700',
+        background: rarityColor[rarity] || '#444',
+        color: '#0b111a',
+      });
+      badge.textContent = ROMAN[tier - 1];
+
+      card.append(icon, label, badge);
+
+      // Tooltip: tái sử dụng builder + show/hide hiện có
+      card.addEventListener('mouseenter', () => {
+        card.__tipHtml = card.__tipHtml || window.buildEquipTooltipHTML(it);
+        window.showEquipHoverNearEl(card, card.__tipHtml);
+      });
+      card.addEventListener('mousemove', (e) => {
+        if (!card.__tipHtml) return;
+        window.showEquipHoverAt(e.pageX, e.pageY, card.__tipHtml);
+      });
+      card.addEventListener('mouseleave', () => {
+        card.__tipHtml = null;
+        window.hideEquipHover();
+      });
+
+      // Click: giữ nguyên luồng trang bị
+      card.onclick = () => {
+        equipItemByIdToSlot(it.id, targetSlot);
+        UIPopup.close?.();
+      };
+
+      box.appendChild(card);
+    }
+  }, 0);
+}
+// Ẩn scrollbar cho phần thân của mọi UIPopup (ghép đồ, trang bị, v.v.)
+(function ensurePopupBodyScrollCSS() {
+  if (document.getElementById('popupBodyScrollCSS')) return;
+  const css = document.createElement('style');
+  css.id = 'popupBodyScrollCSS';
+  css.textContent = `
+    #uiPopupBody { scrollbar-width: none; -ms-overflow-style: none; }
+    #uiPopupBody::-webkit-scrollbar { width: 0; height: 0; }
+  `;
+  document.head.appendChild(css);
+})();
+
 // Utils nhỏ (dùng cho sellItemById)
 function clamp(v, lo, hi) {
   return v < lo ? lo : v > hi ? hi : v;
@@ -730,7 +1214,7 @@ function scrapItemById(id) {
   const rarity = it.rarity || rarityOfTier(tier);
   const mult = RARITY_MULT[rarity] || 1;
 
-  // ✅ Quy bột sắt theo đúng khuôn sell: 5 * tier * mult (đã dùng cho xu)
+  // Quy bột sắt theo đúng khuôn sell: 5 * tier * mult (đã dùng cho xu)
   // để đảm bảo tăng dần theo bậc/độ hiếm như yêu cầu.
   const dust = 5 * tier * mult;
 
@@ -785,6 +1269,7 @@ const UIPopup = (() => {
     Object.assign(titleEl.style, { fontWeight: 700, fontSize: '15px' });
     head.appendChild(titleEl);
     bodyEl = document.createElement('div');
+    bodyEl.id = 'uiPopupBody';
     Object.assign(bodyEl.style, {
       padding: '14px 16px',
       whiteSpace: 'pre-wrap',
@@ -847,7 +1332,9 @@ const UIPopup = (() => {
 
 function fmt(val) {
   if (typeof val === 'string') return val;
-  return Math.abs(val) >= 100 ? Math.round(val) : Number(val).toFixed(1);
+  const n = Number(val);
+  if (!Number.isFinite(n)) return String(val);
+  return n.toFixed(2); // luôn 2 chữ số thập phân
 }
 
 function buildPanel() {
@@ -944,7 +1431,9 @@ function buildPanel() {
     marginBottom: '2px',
   });
   const line2 = makeEl('div', { opacity: 0.8, fontSize: '12px' });
-  pRight.append(name, line1, line2);
+  const line3 = makeEl('div', { opacity: 0.8, fontSize: '12px' });
+  const line4 = makeEl('div', { opacity: 0.8, fontSize: '12px' });
+  pRight.append(name, line1, line2, line3, line4);
   profile.append(avatar, pRight);
   wrap.appendChild(profile);
 
@@ -1043,7 +1532,22 @@ function buildPanel() {
     cell.dataset.slot = slot;
     icon.textContent = Equip.slots[slot]?.icon || '⬚';
     label.textContent = slot;
-    cell.append(icon, label);
+    // badge hiển thị bậc/độ hiếm
+    const badge = makeEl('div', {
+      position: 'absolute',
+      right: '4px',
+      top: '4px',
+      padding: '1px 6px',
+      borderRadius: '8px',
+      fontSize: '10px',
+      fontWeight: '700',
+      display: 'none', // mặc định ẩn nếu ô trống
+      background: '#444',
+      color: '#0b111a',
+    });
+    badge.className = 'gear-badge';
+    cell.style.position = 'relative';
+    cell.append(icon, label, badge);
     cell.onclick = () => {
       const equipped = Equip.slots[slot];
       if (equipped) {
@@ -1051,18 +1555,7 @@ function buildPanel() {
           title: `${equipped.icon || ''} ${equipped.name}`,
           html: true,
           message: (() => {
-            const ROMAN = [
-              'I',
-              'II',
-              'III',
-              'IV',
-              'V',
-              'VI',
-              'VII',
-              'VIII',
-              'IX',
-              'X',
-            ];
+            const ROMAN = window.ROMAN; // Bậc T1-10
             const rarityOfTier = (t = 1) =>
               t <= 3
                 ? 'common'
@@ -1073,13 +1566,17 @@ function buildPanel() {
                 : t === 9
                 ? 'legendary'
                 : 'relic';
-            const rarityColor = {
-              common: '#9e9e9e',
-              rare: '#2e7dff',
-              epic: '#7b3ff0',
-              legendary: '#f0b400',
-              relic: '#ff5252',
-            };
+            const rarityColor = window.RARITY_COLOR ||
+              (window.EquipmentDropAPI &&
+                window.EquipmentDropAPI.CONFIG &&
+                window.EquipmentDropAPI.CONFIG.RARITY_COLOR) || {
+                // Fallback an toàn nếu file drop chưa nạp
+                common: '#9e9e9e',
+                rare: '#2e7dff',
+                epic: '#7b3ff0',
+                legendary: '#f0b400',
+                relic: '#ff5252',
+              };
             const BONUS_LABEL = {
               damageBoost: (v) => `+${v} sát thương`,
               hearts: (v) => `+${v} HP`,
@@ -1103,31 +1600,38 @@ function buildPanel() {
                       return `<span style="display:inline-block;padding:2px 8px;border-radius:8px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.08);margin:2px 6px 0 0;font-size:12px;line-height:20px;">${txt}</span>`;
                     })
                     .join('');
-            const formatSpecial = (sp) => {
+            function formatSpecial(sp) {
               if (!sp) return '—';
               const name = sp.name || 'Kỹ năng đặc biệt';
               const parts = [];
               if (sp.effect === 'slow' && sp.value)
                 parts.push(`Làm chậm ${Math.round(sp.value * 100)}%`);
+              if (sp.effect === 'stun' && (sp.value || sp.duration))
+                parts.push('Choáng');
+              if (sp.effect === 'burn') parts.push('Thiêu đốt');
+              if (sp.knockback) parts.push('Đẩy lùi');
               if (sp.duration) parts.push(`trong ${sp.duration}s`);
               if (sp.cooldown) parts.push(`(Hồi chiêu ${sp.cooldown}s)`);
               if (!parts.length && sp.text) parts.push(sp.text);
+
               const trig =
                 sp.trigger === 'active'
                   ? 'Kích hoạt thủ công'
                   : 'Kích hoạt khi đánh trúng';
-              return `${name}: ${parts.join(' ')} • ${trig}`;
-            };
+              const pct = Number.isFinite(sp.chance)
+                ? ` (${Math.round(sp.chance * 100)}%)`
+                : '';
+
+              return `${name}${pct}: ${parts.join(' ')} • ${trig}`;
+            }
             const tier = Math.max(1, Math.min(10, Number(equipped.tier || 1)));
             const rarity = equipped.rarity || rarityOfTier(tier);
             const badge = `<span style="display:inline-block;padding:2px 8px;border-radius:8px;background:${
               rarityColor[rarity]
             };color:#0b111a;font-weight:700">
-         ${ROMAN[tier - 1]} (${tier})
+         ${ROMAN[tier - 1]}
        </span>
-       <span style="opacity:.75;margin-left:6px">${String(
-         rarity
-       ).toUpperCase()}</span>`;
+       <span style="margin-left:6px">${window.rarityLabelHTML(rarity)}</span>`;
             const section = (title, body, color) =>
               `<div style="margin:3px 0;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
          <span style="color:${color};font-weight:700">${title}:</span>
@@ -1160,7 +1664,7 @@ function buildPanel() {
               onClick: () => window.CharacterPanel?.openTab?.('bag'),
             },
             {
-              label: 'Scrap (bột sắt)',
+              label: 'Scrap',
               onClick: () => scrapEquipped(slot),
               variant: 'danger',
             },
@@ -1168,19 +1672,24 @@ function buildPanel() {
           ],
         });
       } else {
-        UIPopup.open({
-          title: `Slot ${slot} trống`,
-          message: 'Mở Kho đồ để chọn trang bị phù hợp.',
-          actions: [
-            {
-              label: 'Mở Kho đồ',
-              onClick: () => window.CharacterPanel?.openTab?.('bag'),
-            },
-            { label: 'Đóng' },
-          ],
-        });
+        openEquipPickerForSlot(slot);
       }
     };
+    // [ADD HOVER - Gear cell]
+    cell.addEventListener('mouseenter', () => {
+      const equipped = Equip.slots[slot];
+      if (!equipped) return;
+      cell.__tipHtml = cell.__tipHtml || window.buildEquipTooltipHTML(equipped);
+      window.showEquipHoverNearEl(cell, cell.__tipHtml);
+    });
+    cell.addEventListener('mousemove', (e) => {
+      if (!cell.__tipHtml) return;
+      window.showEquipHoverAt(e.pageX, e.pageY, cell.__tipHtml);
+    });
+    cell.addEventListener('mouseleave', () => {
+      cell.__tipHtml = null;
+      window.hideEquipHover();
+    });
     grid.appendChild(cell);
   }
   gearArea.appendChild(grid);
@@ -1195,15 +1704,17 @@ function buildPanel() {
   // ==== GHÉP ĐỒ ====
   // UI:
   fuseArea.innerHTML = `
-  <div style="opacity:.9;margin-bottom:8px">
-    Bột sắt: <b id="ironDustBadge">0</b>
-  </div>
+<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;opacity:.9;margin-bottom:8px;font-size:13px">
+  <div>Bột sắt: <b id="ironDustBadge">0</b></div>
+  <div id="pityBadge" style="font-size:12px;opacity:.85;flex:1;text-align:left;padding-left:5.5rem">Tỷ lệ may mắn +0%</div>
+  <div style="min-width:1px"></div>
+</div>
   <div id="fuseGrid" style="
     display:grid;grid-template-columns:repeat(3,84px);
     gap:8px;justify-content:center;margin:8px auto 10px auto">
-    ${Array.from({ length: 9 })
+    ${[...Array(9).keys()]
       .map(
-        (_, i) => `
+        (i) => `
       <div data-fcell="${i}" style="
         width:84px;height:84px;border-radius:10px;
         border:1px dashed rgba(255,255,255,.25);
@@ -1274,7 +1785,13 @@ function buildPanel() {
     // cập nhật bột sắt
     const ironEl = document.getElementById('ironDustBadge');
     if (ironEl) ironEl.textContent = String(Equip.ironDust || 0);
-
+    // NEW: cập nhật badge tích lũy thất bại (pity)
+    const pityEl = document.getElementById('pityBadge');
+    if (pityEl) {
+      const p = Math.max(0, Number(Equip?.fusion?.pity || 0));
+      pityEl.textContent = `Tỷ lệ may mắn +${Math.round(p * 100)}% `;
+      pityEl.style.opacity = p > 0 ? '1' : '0.85';
+    }
     // grid chưa gắn thì thoát sớm
     const cells = getFuseCells();
     if (!cells || cells.length < 9) return;
@@ -1319,9 +1836,52 @@ function buildPanel() {
       iconEl.textContent = it && it.icon ? it.icon : '⬚';
       nameEl.textContent = it && it.name ? it.name : '';
 
+      /* === RARITY BORDER + TIER BADGE (giống Kho đồ) === */
+      const _tier = Math.max(1, Math.min(10, Number(it?.tier || 1)));
+      const _rar =
+        it?.rarity ||
+        (window.rarityOfTier
+          ? window.rarityOfTier(_tier)
+          : _tier <= 3
+          ? 'common'
+          : _tier <= 6
+          ? 'rare'
+          : _tier <= 8
+          ? 'epic'
+          : _tier === 9
+          ? 'legendary'
+          : 'relic');
+      const _col =
+        (window.RARITY_COLOR && window.RARITY_COLOR[_rar]) ||
+        'rgba(255,255,255,0.07)';
+
       cell.style.border = it
-        ? '1px solid rgba(102, 227, 255, .35)'
+        ? `1px solid ${_col}`
         : '1px dashed rgba(255,255,255,.25)';
+
+      // Badge tái sử dụng (không tạo rác)
+      let badgeEl = cell.querySelector('[data-fbadge]');
+      if (!badgeEl) {
+        badgeEl = document.createElement('div');
+        badgeEl.setAttribute('data-fbadge', '');
+        badgeEl.style.position = 'absolute';
+        badgeEl.style.right = '4px';
+        badgeEl.style.top = '4px';
+        badgeEl.style.padding = '1px 6px';
+        badgeEl.style.borderRadius = '8px';
+        badgeEl.style.fontSize = '10px';
+        badgeEl.style.fontWeight = '700';
+        badgeEl.style.color = '#0b111a';
+        cell.appendChild(badgeEl);
+      }
+      if (it) {
+        // dùng cùng style badge như Kho đồ
+        badgeEl.textContent = window.ROMAN[_tier - 1];
+        badgeEl.style.background = _col || '#444';
+        badgeEl.style.display = '';
+      } else {
+        badgeEl.style.display = 'none';
+      }
     }
 
     // ô giữa = kết quả
@@ -1350,20 +1910,68 @@ function buildPanel() {
 
       const res = Equip.fusion.result;
       iconM.textContent = res?.icon || '🎁';
-      nameM.textContent = res ? res.name || 'Kết quả' : 'Kết quả';
-      center.style.border = res
-        ? '1px solid rgba(255, 222, 120, .5)'
-        : '1px dashed rgba(255,255,255,.25)';
+      if (res) {
+        const _tier = Math.max(1, Math.min(10, Number(res.tier || 1)));
+        const _rar =
+          res.rarity ||
+          (window.rarityOfTier
+            ? window.rarityOfTier(_tier)
+            : _tier <= 3
+            ? 'common'
+            : _tier <= 6
+            ? 'rare'
+            : _tier <= 8
+            ? 'epic'
+            : _tier === 9
+            ? 'legendary'
+            : 'relic');
+        const _col =
+          (window.RARITY_COLOR && window.RARITY_COLOR[_rar]) ||
+          'rgba(255,255,255,0.07)';
+
+        nameM.textContent = res.name || 'Kết quả';
+        center.style.border = `1px solid ${_col}`;
+
+        // Badge tái sử dụng
+        let badgeM = center.querySelector('[data-fbadge]');
+        if (!badgeM) {
+          badgeM = document.createElement('div');
+          badgeM.setAttribute('data-fbadge', '');
+          badgeM.style.position = 'absolute';
+          badgeM.style.right = '4px';
+          badgeM.style.top = '4px';
+          badgeM.style.padding = '1px 6px';
+          badgeM.style.borderRadius = '8px';
+          badgeM.style.fontSize = '10px';
+          badgeM.style.fontWeight = '700';
+          badgeM.style.color = '#0b111a';
+          center.appendChild(badgeM);
+        }
+        badgeM.textContent = window.ROMAN[_tier - 1];
+        badgeM.style.background = _col || '#444';
+        badgeM.style.display = '';
+      } else {
+        nameM.textContent = 'Kết quả';
+        center.style.border = '1px dashed rgba(255,255,255,.25)';
+        const badgeM = center.querySelector('[data-fbadge]');
+        if (badgeM) badgeM.style.display = 'none';
+      }
     }
 
     // hint + enable nút
     const info = document.getElementById('fuseInfo');
     if (info) {
-      const p = getFusionParams(); // { ready, n, group, targetTier, chance, failDust }
+      info.style.fontSize = '13px';
+      info.style.lineHeight = '1.25';
+      info.style.whiteSpace = 'pre-line'; //  cho phép xuống dòng với \n
+
+      const p = getFusionParams();
       if (p.ready) {
         info.textContent =
           `${p.group} bậc ${p.targetTier} • ` +
-          `Chi phí: ${p.cost} bột sắt • Tỉ lệ: ${Math.round(p.chance * 100)}% `;
+          `Chi phí: ${p.cost} bột sắt • ` +
+          `Tỉ lệ: ${Math.round(p.chance * 100)}%` +
+          (p.rarityHint ? `\n Rarity≈ ${p.rarityHint}` : ''); //  xuống dòng
       } else {
         info.textContent = 'Chọn 2–8 trang bị bất kỳ để ghép.';
       }
@@ -1411,7 +2019,9 @@ function buildPanel() {
       7: 0.9,
       8: 0.96,
     };
-    const chance = CHANCE_BY_COUNT[Math.min(8, Math.max(2, n))];
+    let chance = CHANCE_BY_COUNT[Math.min(8, Math.max(2, n))];
+    const pity = Math.max(0, Number(Equip?.fusion?.pity || 0)); // NEW
+    chance = Math.min(0.99, chance + pity); // NEW
     // 💰 Phí ghép = phí cơ bản theo số món * hệ số theo bậc thấp nhất
     const baseCost = FUSION_COST_BY_COUNT[Math.min(8, Math.max(2, n))] || 0;
     const cost = Math.max(
@@ -1430,6 +2040,14 @@ function buildPanel() {
       chance,
       failDust,
       minTier,
+      rarityDist: computeFusionRarityDist(mats, n, minTier),
+      rarityHint: (function (d) {
+        try {
+          return formatRarityHint(d);
+        } catch {
+          return '';
+        }
+      })(computeFusionRarityDist(mats, n, minTier)),
     };
   }
   // thêm/xóa nguyên liệu
@@ -1475,6 +2093,21 @@ function buildPanel() {
       const cell = cells[ci];
       cell.onclick = () => openFusionPicker(i);
       cell.title = 'Nhấp để chọn trang bị từ Kho đưa vào ô ghép';
+      // [ADD HOVER - 8 ô ghép]
+      cell.addEventListener('mouseenter', () => {
+        const it = (Equip.fusion?.mats || [])[i];
+        if (!it) return;
+        cell.__tipHtml = cell.__tipHtml || window.buildEquipTooltipHTML(it);
+        window.showEquipHoverNearEl(cell, cell.__tipHtml);
+      });
+      cell.addEventListener('mousemove', (e) => {
+        if (!cell.__tipHtml) return;
+        window.showEquipHoverAt(e.pageX, e.pageY, cell.__tipHtml);
+      });
+      cell.addEventListener('mouseleave', () => {
+        cell.__tipHtml = null;
+        window.hideEquipHover();
+      });
     });
     // ô giữa = kết quả
     const cMid = cells[4];
@@ -1497,6 +2130,22 @@ function buildPanel() {
         ],
       });
     };
+    // [ADD HOVER - ô giữa]
+    cMid.addEventListener('mouseenter', () => {
+      const it = Equip.fusion?.result;
+      if (!it) return;
+      cMid.__tipHtml = cMid.__tipHtml || window.buildEquipTooltipHTML(it);
+      window.showEquipHoverNearEl(cMid, cMid.__tipHtml);
+    });
+    cMid.addEventListener('mousemove', (e) => {
+      if (!cMid.__tipHtml) return;
+      window.showEquipHoverAt(e.pageX, e.pageY, cMid.__tipHtml);
+    });
+    cMid.addEventListener('mouseleave', () => {
+      cMid.__tipHtml = null;
+      window.hideEquipHover();
+    });
+    cMid.addEventListener('mouseleave', window.hideEquipHover);
   })();
 
   // nút hành động
@@ -1562,11 +2211,14 @@ function buildPanel() {
               icon: base?.icon || '⭐',
               slot: p.group,
               tier: newTier,
-              rarity: rarityOfTier(newTier),
+              rarity: rollFusionRarity(mats, p.n, p.minTier),
               bonuses,
               type: 'equipment',
             };
-
+            if (window.EquipmentDropAPI?.applyAffixes) {
+              window.EquipmentDropAPI.applyAffixes(Equip.fusion.result);
+            }
+            Equip.fusion.pity = 0; // reset về 0% ngay khi ghép thành công
             const fusedResult = Equip?.fusion?.result || null;
             window.openFuseResultPopup?.(true, {
               chance: p.chance,
@@ -1574,11 +2226,25 @@ function buildPanel() {
               targetTier: p.targetTier,
               group: p.group,
             });
+            // Đẩy thông báo lên bản tin
+            if (window.NewsTicker?.pushMessage && fusedResult) {
+              const rar = String(fusedResult.rarity || '').toUpperCase();
+              window.NewsTicker.pushMessage(
+                `🧪 Ghép thành công: ${fusedResult.icon || '⭐'} ${
+                  fusedResult.name
+                } • ${rar}`,
+                true
+              );
+            }
           } else {
             // ❌ Thất bại → hoàn một phần phí
             Equip.ironDust = Number(Equip.ironDust || 0) + (p.failDust || 0);
             Equip.fusion.result = null;
-
+            // NEW: tăng “tỷ lệ thành công” tích lũy thêm 1% (clamp tối đa 99%)
+            Equip.fusion.pity = Math.min(
+              0.99,
+              Math.max(0, Number(Equip?.fusion?.pity || 0)) + 0.01
+            );
             window.openFuseResultPopup?.(false, {
               chance: p.chance,
               failDust: p.failDust,
@@ -1613,7 +2279,7 @@ function buildPanel() {
       title: requiredGroup
         ? `Chọn ${requiredGroup} từ Kho`
         : 'Chọn trang bị từ Kho',
-      html: true, // ✅ quan trọng: cho phép render HTML
+      html: true, // quan trọng: cho phép render HTML
       message: `
   <div id="fusionPicker"
        style="
@@ -1645,18 +2311,7 @@ function buildPanel() {
 
       for (const it of pool) {
         // Map hiếm & badge (giống Kho đồ)
-        const ROMAN = [
-          'I',
-          'II',
-          'III',
-          'IV',
-          'V',
-          'VI',
-          'VII',
-          'VIII',
-          'IX',
-          'X',
-        ];
+        const ROMAN = window.ROMAN;
         const rarityOfTier = (t = 1) =>
           t <= 3
             ? 'common'
@@ -1667,7 +2322,17 @@ function buildPanel() {
             : t === 9
             ? 'legendary'
             : 'relic';
-        const rarityColor = {
+        const rarityColor = window.RARITY_COLOR || {
+          common: '#9e9e9e',
+          rare: '#2e7dff',
+          epic: '#7b3ff0',
+          legendary: '#f0b400',
+          relic: '#ff5252',
+        };
+        (window.EquipmentDropAPI &&
+          window.EquipmentDropAPI.CONFIG &&
+          window.EquipmentDropAPI.CONFIG.RARITY_COLOR) || {
+          // Fallback an toàn nếu file drop chưa nạp
           common: '#9e9e9e',
           rare: '#2e7dff',
           epic: '#7b3ff0',
@@ -1737,7 +2402,19 @@ function buildPanel() {
           window.CharacterPanel?.refresh?.();
           UIPopup.close?.();
         };
-
+        // [ADD HOVER - Fusion Picker card]
+        card.addEventListener('mouseenter', () => {
+          card.__tipHtml = card.__tipHtml || window.buildEquipTooltipHTML(it);
+          window.showEquipHoverNearEl(card, card.__tipHtml);
+        });
+        card.addEventListener('mousemove', (e) => {
+          if (!card.__tipHtml) return;
+          window.showEquipHoverAt(e.pageX, e.pageY, card.__tipHtml);
+        });
+        card.addEventListener('mouseleave', () => {
+          card.__tipHtml = null;
+          window.hideEquipHover();
+        });
         box.appendChild(card);
       }
     }, 0);
@@ -1763,31 +2440,27 @@ function buildPanel() {
     const list = Equip.inventory.filter((it) => !equippedSet.has(it));
 
     function buildItemPopupHTML(it) {
-      const ROMAN = [
-        'I',
-        'II',
-        'III',
-        'IV',
-        'V',
-        'VI',
-        'VII',
-        'VIII',
-        'IX',
-        'X',
-      ];
+      const ROMAN = window.ROMAN;
       const tier = Math.max(1, Math.min(10, Number(it.tier || 1)));
       const rarity = it.rarity || rarityOfTier(tier);
-      const tshow = `${ROMAN[tier - 1]} (${tier})`;
+      const tshow = `${ROMAN[tier - 1]}`;
       const badge = `<span style="display:inline-block;padding:2px 8px;border-radius:8px;
                   background:${
                     rarityColor[rarity]
                   };color:#0b111a;font-weight:700">
        ${tshow}
      </span>
-     <span style="opacity:.75;margin-left:6px">${String(
-       rarity
-     ).toUpperCase()}</span>`;
-      const mainAttr = it.slot ? chipsFromBonuses(it.bonuses) : '—';
+     <span style="margin-left:6px">${window.rarityLabelHTML(rarity)}</span>`;
+      const isEquip =
+        isEquippable(it) ||
+        !!(
+          it.slot ||
+          (it.slotOptions && it.slotOptions.length) ||
+          it.type === 'equipment'
+        );
+
+      const mainAttr =
+        isEquip && it.bonuses ? chipsFromBonuses(it.bonuses) : '—';
       const extraAttr =
         chipsFromBonuses(it.extraBonuses || it.extra || it.randBonuses) || '—';
       const special = formatSpecial(it.special);
@@ -1805,10 +2478,32 @@ function buildPanel() {
     ${line('Thuộc tính cộng thêm', extraAttr, '#ffab91')}
     ${line('Tính năng đặc biệt', special, '#f48fb1')}
     ${line('Trạng thái', state, '#90caf9')}
+    ${line(
+      'Giá bán',
+      5 *
+        Math.max(1, Math.min(10, Number(it.tier || 1))) *
+        (RARITY_MULT[
+          it.rarity ||
+            rarityOfTier(Math.max(1, Math.min(10, Number(it.tier || 1))))
+        ] || 1) +
+        ' xu',
+      '#ffd54f'
+    )}
+    ${line(
+      'Scrap',
+      5 *
+        Math.max(1, Math.min(10, Number(it.tier || 1))) *
+        (RARITY_MULT[
+          it.rarity ||
+            rarityOfTier(Math.max(1, Math.min(10, Number(it.tier || 1))))
+        ] || 1) +
+        ' Bột sắt',
+      '#cfd8dc'
+    )}
   </div>`;
     }
 
-    const ROMAN = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X'];
+    const ROMAN = window.ROMAN;
     const rarityOfTier = (t = 1) =>
       t <= 3
         ? 'common'
@@ -1819,13 +2514,17 @@ function buildPanel() {
         : t === 9
         ? 'legendary'
         : 'relic';
-    const rarityColor = {
-      common: '#9e9e9e',
-      rare: '#2e7dff',
-      epic: '#7b3ff0',
-      legendary: '#f0b400',
-      relic: '#ff5252',
-    };
+    const rarityColor = window.RARITY_COLOR ||
+      (window.EquipmentDropAPI &&
+        window.EquipmentDropAPI.CONFIG &&
+        window.EquipmentDropAPI.CONFIG.RARITY_COLOR) || {
+        // Fallback an toàn nếu file drop chưa nạp
+        common: '#9e9e9e',
+        rare: '#2e7dff',
+        epic: '#7b3ff0',
+        legendary: '#f0b400',
+        relic: '#ff5252',
+      };
     const BONUS_LABEL = {
       damageBoost: (v) => `+${v} sát thương`,
       hearts: (v) => `+${v} HP`,
@@ -1876,9 +2575,8 @@ function buildPanel() {
         if (eff.coins) arr.push(`+${eff.coins} xu`);
         return `Vật phẩm tiêu hao: ${arr.join(', ')}`.trim();
       }
-      if (it.slot && it.bonuses)
+      if (isEquippable(it) && it.bonuses)
         return `Trang bị. ${formatBonuses(it.bonuses)}.`;
-      return '';
     }
 
     function formatSpecial(sp) {
@@ -1887,22 +2585,30 @@ function buildPanel() {
       const parts = [];
       if (sp.effect === 'slow' && sp.value)
         parts.push(`Làm chậm ${Math.round(sp.value * 100)}%`);
+      if (sp.effect === 'stun' && (sp.value || sp.duration))
+        parts.push('Choáng');
+      if (sp.effect === 'burn') parts.push('Thiêu đốt');
+      if (sp.knockback) parts.push('Đẩy lùi');
       if (sp.duration) parts.push(`trong ${sp.duration}s`);
       if (sp.cooldown) parts.push(`(Hồi chiêu ${sp.cooldown}s)`);
       if (!parts.length && sp.text) parts.push(sp.text);
+
       const trig =
         sp.trigger === 'active'
           ? 'Kích hoạt thủ công'
           : 'Kích hoạt khi đánh trúng';
-      return `${name}: ${parts.join(' ')} • ${trig}`;
-    }
+      const pct = Number.isFinite(sp.chance)
+        ? ` (${Math.round(sp.chance * 100)}%)`
+        : '';
 
+      return `${name}${pct}: ${parts.join(' ')} • ${trig}`;
+    }
     function formatState(it) {
       if (it.type === 'box') return 'Có thể mở';
       if (it.type === 'consumable') return 'Có thể sử dụng';
       if (it.special?.trigger === 'active') return 'Có thể kích hoạt';
       if (it.special) return 'Bị động (tự kích hoạt)';
-      if (it.slot || it.type === 'equipment') return 'Có thể trang bị';
+      if (isEquippable(it)) return 'Có thể trang bị';
       return '—';
     }
 
@@ -1949,7 +2655,12 @@ function buildPanel() {
         },
         ROMAN[Math.max(1, Math.min(10, tier)) - 1]
       );
-      card.title = `${it.name} • Slot: ${it.slot || it.type || '—'}`;
+      /* const groupName =
+        getItemGroup(it) ||
+        it.slot ||
+        (Array.isArray(it.slotOptions) ? 'Vũ khí/Nhẫn' : it.type) ||
+        '—';
+      card.title = `${it.name} • Slot: ${groupName}`;*/
       card.append(icon, label, badge);
       card.onclick = () => {
         const actions = [];
@@ -1960,7 +2671,7 @@ function buildPanel() {
         } else if (isEquippable(it)) {
           const allowed = getAllowedSlotsForItem(it);
           if (allowed.length > 1) {
-            // ✅ Chỉ hiện 2 nút cho item 2 slot
+            // Chỉ hiện 2 nút cho item 2 slot
             actions.push({
               label: 'Trang bị 1',
               onClick: () => equipItemByIdToSlot(it.id, allowed[0]),
@@ -1970,7 +2681,7 @@ function buildPanel() {
               onClick: () => equipItemByIdToSlot(it.id, allowed[1]),
             });
           } else {
-            // ✅ Item 1 slot vẫn có 1 nút "Trang bị"
+            // Item 1 slot vẫn có 1 nút "Trang bị"
             actions.push({
               label: 'Trang bị',
               onClick: () => equipItemById(it.id),
@@ -2005,6 +2716,19 @@ function buildPanel() {
           actions,
         });
       };
+      // [ADD HOVER - Bag card]
+      card.addEventListener('mouseenter', () => {
+        card.__tipHtml = card.__tipHtml || window.buildEquipTooltipHTML(it);
+        window.showEquipHoverNearEl(card, card.__tipHtml);
+      });
+      card.addEventListener('mousemove', (e) => {
+        if (!card.__tipHtml) return;
+        window.showEquipHoverAt(e.pageX, e.pageY, card.__tipHtml);
+      });
+      card.addEventListener('mouseleave', () => {
+        card.__tipHtml = null;
+        window.hideEquipHover();
+      });
       grid.appendChild(card);
     });
   }
@@ -2041,6 +2765,17 @@ function buildPanel() {
 
   wrap.append(statsArea, gearArea, bagArea, footer);
   document.body.appendChild(wrap);
+  // Ẩn scrollbar cho danh sách chọn trang bị trong popup "Chọn trang bị"
+  (function ensureEquipPickerScrollCSS() {
+    if (document.getElementById('equipPickerScrollCSS')) return;
+    const css = document.createElement('style');
+    css.id = 'equipPickerScrollCSS';
+    css.textContent = `
+    #equipPicker { scrollbar-width: none; -ms-overflow-style: none; }
+    #equipPicker::-webkit-scrollbar { width: 0; height: 0; }
+  `;
+    document.head.appendChild(css);
+  })();
 
   // === Tab switching (null-safe) ===
   function showTab(tab) {
@@ -2105,8 +2840,31 @@ function buildPanel() {
     const dmg = playerUpgrades?.damageBoost ?? 0;
     const bulletSpeed = playerUpgrades?.bulletSpeed ?? 1;
     name.textContent = n;
-    line1.textContent = `Lv ${lv} • HP ${hp}/${player.maxHearts} • Stamina ${stamina}/${player.staminaMax}`;
-    line2.textContent = `👟 ${fmt(spd)} | 💥 ${fmt(dmg)} | 💨 ${bulletSpeed}`;
+    line1.textContent = `Lv ${lv} • HP ${hp}/${player.maxHearts} • SP ${stamina}/${player.staminaMax}`;
+    line2.textContent = `🛡️ ${fmt(player.armor || 0)} | 👟 ${fmt(
+      spd
+    )} | 💥 ${fmt(dmg)} | 💨 ${fmt(bulletSpeed)}`;
+    // Regen từ TRANG BỊ (đọc từ recalcEquipStats)
+    const eqHp = Number(player?.equipHpRegen || 0);
+    const eqSp = Number(player?.equipSpRegen || 0);
+    // Base mặc định mỗi tick (yêu cầu của bạn: +1 cho cả HP & SP)
+    const BASE_PER_TICK = 1;
+    // Tổng thực tế mỗi tick (để người chơi thấy chính xác)
+    const hpTotal = eqHp + BASE_PER_TICK;
+    const spTotal = eqSp + BASE_PER_TICK;
+    // Hiển thị: tổng (đồ + base) và giữ số lẻ đúng 2 chữ số
+    const f2 = (v) => Number(v).toFixed(2);
+    line3.textContent =
+      `🔹 SP regen: +${f2(spTotal)}/tick • ` +
+      `❤️ HP regen: +${f2(hpTotal)}/tick `;
+    const now = Date.now();
+    const cr =
+      typeof window.getCritRate === 'function' ? window.getCritRate(now) : 0;
+    const cd =
+      typeof window.getCritDmg === 'function' ? window.getCritDmg(now) : 0;
+    line4.textContent = `💥 Crit: ${(cr * 100).toFixed(2)}% • 💥x${(
+      1 + cd
+    ).toFixed(2)}`;
   }
 
   function renderRows() {
@@ -2126,8 +2884,15 @@ function buildPanel() {
         crit_perm: 'crit',
         hp_cap: 'hp',
         stamina: 'stamina',
+        armor: 'armor',
       };
-      const stepMap = { damage: 1, crit_perm: 1, hp_cap: 5, stamina: 2 };
+      const stepMap = {
+        damage: 1,
+        crit_perm: 1,
+        hp_cap: 5,
+        stamina: 2,
+        armor: 1,
+      };
       const unitMap = { crit_perm: '%' };
 
       const val = makeEl('div', { textAlign: 'right', opacity: 0.9 });
@@ -2246,63 +3011,64 @@ function buildPanel() {
 
   // THÊM helper: Trang bị nhanh đồ tốt nhất
   function quickEquipBestItems() {
-    const bestInSlot = new Map(); // Dùng Map để lưu trang bị tốt nhất cho mỗi loại (Vũ khí, Giáp,...)
+    // Sức chứa mỗi group (Vũ khí=2, Nhẫn=2, còn lại=1)
+    const capacityOf = (group) => SLOT_ALIASES[group]?.length || 1;
 
-    // 1. Tìm trang bị có bậc cao nhất cho mỗi loại trong kho đồ
-    for (const item of Equip.inventory) {
-      if (!isEquippable(item)) continue;
-      const group = getItemGroup(item); // Lấy nhóm trang bị (vd: 'Vũ khí', 'Giáp', 'Nhẫn')
-      if (!group) continue;
+    // Gom item theo group
+    const map = new Map(); // group -> array
+    for (const it of Equip.inventory) {
+      if (!isEquippable(it)) continue;
+      const g = getItemGroup(it);
+      if (!g) continue;
+      if (!map.has(g)) map.set(g, []);
+      map.get(g).push(it);
+    }
 
-      const currentBest = bestInSlot.get(group);
-      const itemTier = Number(item.tier || 1);
-
-      // Nếu chưa có món tốt nhất hoặc món này có bậc cao hơn -> cập nhật
-      if (!currentBest || itemTier > Number(currentBest.tier || 1)) {
-        bestInSlot.set(group, item);
+    // Lấy top theo tier cho từng group, số lượng = sức chứa
+    const pickList = [];
+    for (const [g, arr] of map.entries()) {
+      arr.sort((a, b) => Number(b.tier || 1) - Number(a.tier || 1));
+      const k = capacityOf(g);
+      for (let i = 0; i < Math.min(k, arr.length); i++) {
+        pickList.push(arr[i]);
       }
     }
 
-    const itemsToEquip = Array.from(bestInSlot.values());
-    if (itemsToEquip.length === 0) {
+    if (pickList.length === 0) {
       showWarning?.('Không có trang bị trong kho để trang bị nhanh.');
       return;
     }
 
     let equippedCount = 0;
-    // 2. Duyệt qua danh sách đồ tốt nhất và trang bị nếu nó tốt hơn đồ đang mặc
-    for (const bestItem of itemsToEquip) {
-      const targetSlot = autoPickTargetSlot(bestItem); // Tự động chọn ô trang bị
-      const currentItemInSlot = Equip.slots[targetSlot];
 
-      const bestItemTier = Number(bestItem.tier || 1);
-      // Gán bậc là -1 nếu ô trống để đảm bảo luôn trang bị vào ô trống
-      const currentItemTier = currentItemInSlot
-        ? Number(currentItemInSlot.tier || 1)
-        : -1;
+    // Trang bị từng món (gọi lại autoPickTargetSlot mỗi lần để ưu tiên ô trống)
+    for (const bestItem of pickList) {
+      const targetSlot = autoPickTargetSlot(bestItem);
+      if (!targetSlot) continue;
 
-      // Chỉ trang bị khi món mới có bậc cao hơn món đang mặc
-      if (bestItemTier > currentItemTier) {
-        const invIndex = Equip.inventory.findIndex(
-          (it) => it.id === bestItem.id
-        );
-        if (invIndex === -1) continue;
+      const current = Equip.slots[targetSlot];
+      const newTier = Number(bestItem.tier || 1);
+      const curTier = current ? Number(current.tier || 1) : -1;
 
-        const itemToEquip = Equip.inventory.splice(invIndex, 1)[0]; // Lấy đồ ra khỏi kho
+      if (newTier > curTier) {
+        // lấy bestItem ra khỏi kho
+        const idx = Equip.inventory.findIndex((it) => it.id === bestItem.id);
+        if (idx === -1) continue;
+        const itemToEquip = Equip.inventory.splice(idx, 1)[0];
 
-        if (currentItemInSlot) {
-          Equip.inventory.push(currentItemInSlot); // Trả đồ cũ vào kho
-        }
+        // trả đồ cũ về kho (nếu có)
+        if (current) Equip.inventory.push(current);
 
-        Equip.slots[targetSlot] = itemToEquip; // Mặc đồ mới
+        // mặc đồ mới
+        Equip.slots[targetSlot] = itemToEquip;
         equippedCount++;
       }
     }
 
     if (equippedCount > 0) {
-      applyEquipmentBonuses(); // Cập nhật lại chỉ số nhân vật
-      window.CharacterPanel?.refresh(); // Làm mới giao diện
-      showWarning?.(`✅ Đã trang bị nhanh ${equippedCount} món đồ tốt nhất.`);
+      applyEquipmentBonuses();
+      window.CharacterPanel?.refresh();
+      showWarning?.(`Đã trang bị nhanh ${equippedCount} món.`);
     } else {
       showWarning?.('Bạn đã đang mặc trang bị tốt nhất rồi.');
     }
@@ -2329,13 +3095,62 @@ function buildPanel() {
   }
 
   function refreshGearIcons() {
+    const ROMAN = window.ROMAN;
+    const rarityOfTier = (t = 1) =>
+      t <= 3
+        ? 'common'
+        : t <= 6
+        ? 'rare'
+        : t <= 8
+        ? 'epic'
+        : t === 9
+        ? 'legendary'
+        : 'relic';
+    const rarityColor = window.RARITY_COLOR ||
+      (window.EquipmentDropAPI &&
+        window.EquipmentDropAPI.CONFIG &&
+        window.EquipmentDropAPI.CONFIG.RARITY_COLOR) || {
+        // Fallback an toàn nếu file drop chưa nạp
+        common: '#9e9e9e',
+        rare: '#2e7dff',
+        epic: '#7b3ff0',
+        legendary: '#f0b400',
+        relic: '#ff5252',
+      };
+
     for (const cell of gearArea.querySelectorAll('[data-slot]')) {
       const slot = cell.dataset.slot;
-      const icon = cell.firstChild;
-      icon.textContent = Equip.slots[slot]?.icon || '⬚';
+      const iconEl = cell.firstChild; // div icon
+      const item = Equip.slots?.[slot] || null;
+
+      // cập nhật icon
+      iconEl.textContent = item?.icon || '⬚';
+
+      // tìm badge vừa thêm (class 'gear-badge')
+      const badge = cell.querySelector('.gear-badge');
+
+      if (item) {
+        const tier = Math.max(1, Math.min(10, Number(item.tier || 1)));
+        const rarity = item.rarity || rarityOfTier(tier);
+        const color = rarityColor[rarity] || 'rgba(255,255,255,0.07)';
+
+        // viền theo độ hiếm để nổi bật món đang đeo
+        cell.style.border = `1px solid ${color}`;
+
+        // badge: hiển thị bậc bằng số La Mã, nền theo màu độ hiếm
+        if (badge) {
+          badge.style.display = 'inline-block';
+          badge.style.background = color;
+          badge.textContent = ROMAN[tier - 1] || String(tier);
+          badge.title = rarity.toUpperCase(); // hover thấy tên rarity
+        }
+      } else {
+        // ô trống: viền nhạt và ẩn badge
+        cell.style.border = '1px solid rgba(255,255,255,0.07)';
+        if (badge) badge.style.display = 'none';
+      }
     }
   }
-
   function refresh() {
     refreshProfile();
     refreshHeaderPts();
@@ -2498,7 +3313,7 @@ animation: ft-pop 260ms cubic-bezier(.2,.7,.2,1.1) forwards; }
     }
   }
 
-  // ✅ Popup: KẾT QUẢ
+  // Popup: KẾT QUẢ
   window.openFuseResultPopup = function (ok, ctx = {}) {
     injectFusionToastStyles();
 
@@ -2576,6 +3391,180 @@ animation: ft-pop 260ms cubic-bezier(.2,.7,.2,1.1) forwards; }
     const bar = toast.querySelector('.progress');
     if (bar) bar.style.animationDuration = FUSION_PROCESS_MS + 'ms';
     setTimeout(() => overlay.remove(), FUSION_PROCESS_MS);
+  };
+})();
+// === On-Hit từ trang bị (dùng trong sysUpdateBullets) =======================
+window.applyOnHitFromEquips = function (z, now, srcX, srcY) {
+  if (!window.Equip || !Equip.slots || !z) return;
+  const get = (k) => Equip.slots[k];
+  const specials = [];
+  const w1 = get('Vũ khí 1') || get('Vũ khí');
+  const w2 = get('Vũ khí 2');
+  if (w1 && w1.special) specials.push(w1.special);
+  if (w2 && w2.special) specials.push(w2.special);
+
+  for (let i = 0; i < specials.length; i++) {
+    const sp = specials[i];
+    const chance = Number(sp.chance || 0.1);
+    if (chance > 0 && Math.random() < chance) {
+      const durMs = Math.round((sp.duration || 3) * 1000);
+      if (sp.effect === 'slow') {
+        z.slowEndTime = Math.max(z.slowEndTime || 0, now + durMs);
+      } else if (sp.effect === 'stun') {
+        z.stunnedByThunder = true;
+        z.stunnedThunderUntil = now + durMs;
+      } else if (sp.effect === 'burn') {
+        z.weaponBurnUntil = now + durMs;
+        z.weaponBurnDpsMul = sp.dpsMul || 0.18;
+      } else if (sp.effect === 'push') {
+        const ax = srcX != null ? srcX : window.player?.x || 0;
+        const ay = srcY != null ? srcY : window.player?.y || 0;
+        const ang = Math.atan2(z.y - ay, z.x - ax);
+        const power = sp.power || 120;
+        z.x += Math.cos(ang) * power;
+        z.y += Math.sin(ang) * power;
+      }
+    }
+  }
+};
+// === EQUIP HOVER TOOLTIP (shared) ============================================
+(function () {
+  if (window.__equipHoverInit) return;
+  window.__equipHoverInit = true;
+
+  const tip = document.createElement('div');
+  tip.id = 'equipHoverTip';
+  Object.assign(tip.style, {
+    position: 'fixed',
+    left: '0px',
+    top: '0px',
+    transform: 'translate(0, 0)',
+    maxWidth: '320px',
+    padding: '8px 10px',
+    borderRadius: '10px',
+    background: 'rgba(15,18,26,.96)',
+    color: '#fff',
+    border: '1px solid rgba(255,255,255,.12)',
+    boxShadow: '0 6px 24px rgba(0,0,0,.35)',
+    fontSize: '12px',
+    lineHeight: '1.35',
+    zIndex: 10060,
+    pointerEvents: 'none',
+    display: 'none',
+    whiteSpace: 'normal',
+  });
+  document.body.appendChild(tip);
+
+  const ROMAN = window.ROMAN;
+  const RCOL = window.RARITY_COLOR || {
+    // Fallback nếu file drop chưa nạp
+    common: '#9e9e9e',
+    rare: '#2e7dff',
+    epic: '#7b3ff0',
+    legendary: '#f0b400',
+    relic: '#ff5252',
+  };
+  const BONUS_LABEL = {
+    damageBoost: (v) => `+${v} sát thương`,
+    hearts: (v) => `+${v} HP`,
+    armor: (v) => `+${v} Giáp`,
+    bulletSpeed: (v) => `+${Math.round(v * 100)}% tốc độ đạn`,
+    moveSpeed: (v) => `+${Math.round(v * 100)}% tốc độ di chuyển`,
+    critRate: (v) => `+${Math.round(v * 1000) / 10}% tỉ lệ chí mạng`,
+    critDmg: (v) => `+${Math.round(v * 1000) / 10}% sát thương chí mạng`,
+    iceArrow: (v) => `+${v} cấp Ice Arrow`,
+    lineBulletCount: (v) => `+${v} đạn/dòng`,
+    hpRegen: (v) => `Hồi HP +${v}/tick`,
+    spRegen: (v) => `Hồi SP +${v}/tick`,
+    stamina: (v) => `+${v} Stamina`,
+  };
+  function chips(b) {
+    if (!b) return '';
+    return Object.entries(b)
+      .map(([k, v]) => {
+        const txt = BONUS_LABEL[k] ? BONUS_LABEL[k](v) : `${k}: ${v}`;
+        return `<span style="
+          display:inline-block;padding:2px 8px;border-radius:8px;
+          background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.08);
+          margin:2px 6px 0 0; font-size:12px; line-height:20px;">${txt}</span>`;
+      })
+      .join('');
+  }
+  function rarityOfTier(t = 1) {
+    return t <= 3
+      ? 'common'
+      : t <= 6
+      ? 'rare'
+      : t <= 8
+      ? 'epic'
+      : t === 9
+      ? 'legendary'
+      : 'relic';
+  }
+
+  window.buildEquipTooltipHTML = function (it) {
+    if (!it) return '';
+    const tier = Number(it.tier || 1);
+    const rar = String(it.rarity || rarityOfTier(tier));
+    const badge = `
+      <span style="padding:1px 6px;border-radius:8px;font-weight:700;
+      background:${RCOL[rar] || '#444'};color:#0b111a">
+        ${ROMAN[Math.max(1, Math.min(10, tier)) - 1]}
+      </span>
+      <span style="margin-left:6px">${window.rarityLabelHTML(rar)}</span>`;
+    const extra = it.extraBonuses || it.extra || it.randBonuses;
+    const sp = it.special
+      ? `✨ ${it.special.name || 'Hiệu ứng'} (${Math.round(
+          (it.special.chance || 0.1) * 100
+        )}%)`
+      : '';
+
+    return `
+      <div style="display:grid;grid-template-columns:auto 1fr;gap:8px;align-items:center">
+        <div style="font-size:18px">${it.icon || '⬚'}</div>
+        <div>
+          <div style="font-weight:700">${it.name || 'Trang bị'}</div>
+          <div style="margin-top:2px">${badge}</div>
+        </div>
+      </div>
+      <div style="margin-top:6px">${chips(it.bonuses)}</div>
+      ${
+        extra
+          ? `<div style="margin-top:4px;opacity:.95">${chips(extra)}</div>`
+          : ''
+      }
+      ${sp ? `<div style="margin-top:4px;opacity:.95">${sp}</div>` : ''}`;
+  };
+
+  window.showEquipHoverAt = function (pageX, pageY, html) {
+    if (!html) {
+      tip.style.display = 'none';
+      return;
+    }
+    tip.innerHTML = html;
+    tip.style.display = 'block'; // cần hiển thị để đo kích thước
+    const gap = 2; // khoảng cách từ chuột sang trái
+    const w = tip.offsetWidth;
+    const h = tip.offsetHeight;
+
+    // Luôn đặt TRÁI của chuột/phần tử
+    let x = pageX - w - gap;
+    let y = pageY + gap;
+
+    // Chống tràn màn hình (nhẹ nhàng)
+    x = Math.max(8, Math.min(x, window.innerWidth - w - 8));
+    y = Math.max(8, Math.min(y, window.innerHeight - h - 8));
+
+    tip.style.left = x + 'px';
+    tip.style.top = y + 'px';
+  };
+  window.showEquipHoverNearEl = function (el, html) {
+    if (!el) return;
+    const r = el.getBoundingClientRect();
+    window.showEquipHoverAt(r.left, r.top, html);
+  };
+  window.hideEquipHover = function () {
+    tip.style.display = 'none';
   };
 })();
 
